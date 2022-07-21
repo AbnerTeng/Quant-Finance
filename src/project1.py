@@ -41,7 +41,7 @@ plt.show()
 # I use an empty array to store my signal
 
 # %%
-condition1 = TSMC_price_data['SMA5'] > TSMC_price_data['SMA20']
+condition1 = TSMC_price_data['SMA5'] >= TSMC_price_data['SMA20']
 condition2 = TSMC_price_data['SMA5'] < TSMC_price_data['SMA20']
 signal = []
 ## stock = 0
@@ -62,25 +62,23 @@ TSMC_price_data['SMA_signal'] = pd.Series(index = TSMC_price_data.index, data = 
 # Calculate the daily return
 
 # %%
-TSMC_price_data['return'] = TSMC_price_data['Close'].pct_change()
+TSMC_price_data['return'] = pd.Series(np.zeros(len(TSMC_price_data)))
+i = 2
+for i in range(len(TSMC_price_data)):
+    TSMC_price_data['return'][i] = ((TSMC_price_data['Close'][i] - TSMC_price_data['Close'][i-1]) / TSMC_price_data['Close'][i-1])
+    
 strat_return = np.zeros(len(TSMC_price_data))
 
 for i in range(len(TSMC_price_data)):
     if TSMC_price_data['SMA_signal'][i] == 1:
-        strat_return[i] = TSMC_price_data['return'][i]*TSMC_price_data['SMA_signal'][i]
+        strat_return[i] = TSMC_price_data['return'][i+1]*TSMC_price_data['SMA_signal'][i]
     elif TSMC_price_data['SMA_signal'][i] == -1:
-        strat_return[i] = TSMC_price_data['return'][i]*TSMC_price_data['SMA_signal'][i]
+        strat_return[i] = TSMC_price_data['return'][i+1]*TSMC_price_data['SMA_signal'][i]
 
 TSMC_price_data['strat_return'] = strat_return
 
-# %% [markdown]
-# benchmark return
-
 # %%
-benchmark_return = TSMC_price_data['Close'].pct_change()
-TSMC_price_data['benchmark'] = benchmark_return
-# %%
-pf.create_returns_tear_sheet(returns = TSMC_price_data['strat_return'], benchmark_rets = TSMC_price_data['benchmark'])
+pf.create_returns_tear_sheet(returns = TSMC_price_data['strat_return'], benchmark_rets = TSMC_price_data['return'])
 
 
 # %% [markdown]
