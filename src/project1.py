@@ -69,3 +69,10 @@ pf.create_returns_tear_sheet(returns = TSMC_price_data['strat_return'], benchmar
 
 
 # %%
+TSMC_price_data = TSMC_price_data.drop(columns = ['High', 'Low', 'Adj Close', 'return'])
+from pathlib import Path
+filepath = Path('/Users/abnerteng/GitHub/TMBA-projects/data/TSMC_price_data.csv')
+filepath.parent.mkdir(parents = True, exist_ok = True)
+TSMC_price_data.to_csv(filepath)
+
+# %%
