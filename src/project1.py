@@ -2,6 +2,9 @@
 # ## Project 1
 # SMA strategy backtesting return analysis by using pyfolio
 
+# %% [markdown]
+# import data
+
 # %%
 import numpy as np
 import pandas as pd
@@ -14,6 +17,9 @@ TSMC_price_data = yf.download('2330.TW', start = '2018-01-01', end = '2022-07-18
 TSMC_price_data['Date'] = TSMC_price_data.index
 print(TSMC_price_data)
 TSMC_price_data['Date'] = pd.to_datetime(TSMC_price_data['Date'], format = '%Y-%m-%d')
+
+# %% [markdown]
+# Setting SMA5, SMA20 line, and plot them
 
 # %%
 TSMC_price_data['Close'] = pd.to_numeric(TSMC_price_data['Close'])
@@ -29,6 +35,10 @@ plt.xlabel('Date')
 plt.ylabel('Price')
 plt.title('Basic status of 2330.TW')
 plt.show()
+
+# %% [markdown]
+# My strategy: SMA5 > SMA20 is the first condition, and SMA5 < SMA20 is the second condition \
+# I use an empty array to store my signal
 
 # %%
 condition1 = TSMC_price_data['SMA5'] > TSMC_price_data['SMA20']
@@ -48,6 +58,9 @@ for i in range(len(TSMC_price_data)):
 
 TSMC_price_data['SMA_signal'] = pd.Series(index = TSMC_price_data.index, data = signal)
 
+# %% [markdown]
+# Calculate the daily return
+
 # %%
 TSMC_price_data['return'] = TSMC_price_data['Close'].pct_change()
 strat_return = np.zeros(len(TSMC_price_data))
@@ -60,13 +73,18 @@ for i in range(len(TSMC_price_data)):
 
 TSMC_price_data['strat_return'] = strat_return
 
-# %%
+# %% [markdown]
 # benchmark return
+
+# %%
 benchmark_return = TSMC_price_data['Close'].pct_change()
 TSMC_price_data['benchmark'] = benchmark_return
 # %%
 pf.create_returns_tear_sheet(returns = TSMC_price_data['strat_return'], benchmark_rets = TSMC_price_data['benchmark'])
 
+
+# %% [markdown]
+# export dataFrame to .csv file
 
 # %%
 TSMC_price_data = TSMC_price_data.drop(columns = ['High', 'Low', 'Adj Close', 'return'])
@@ -74,5 +92,6 @@ from pathlib import Path
 filepath = Path('/Users/abnerteng/GitHub/TMBA-projects/data/TSMC_price_data.csv')
 filepath.parent.mkdir(parents = True, exist_ok = True)
 TSMC_price_data.to_csv(filepath)
+
 
 # %%
