@@ -1,8 +1,8 @@
 # %% [markdown]
 # ## Project 1
+# SMA strategy backtesting return analysis by using pyfolio
 
 # %%
-from tracemalloc import start
 import numpy as np
 import pandas as pd
 import pyfolio as pf
@@ -48,49 +48,6 @@ for i in range(len(TSMC_price_data)):
 
 TSMC_price_data['SMA_signal'] = pd.Series(index = TSMC_price_data.index, data = signal)
 
-
-# %%
-''';
-zero_data = np.zeros(len(TSMC_price_data))
-strat_return = pd.Series(zero_data)
-stock = 0
-stock_his = []
-buy_price = 0
-sell_price = 0
-for i in range(len(TSMC_price_data) - 1):
-    stock_his.append(stock)
-    if TSMC_price_data['SMA_signal'][i] == 1:
-        buy_price = TSMC_price_data['Open'][i+1]
-        stock += 1
-    elif TSMC_price_data['SMA_signal'][i] == -1:
-        sell_price = TSMC_price_data['Open'][i+1]
-        stock -= 1
-        strat_return.append((sell_price - buy_price)/buy_price)
-        buy_price = 0
-        sell_price = 0
-
-if stock == 1 and buy_price != 0 and sell_price == 0:
-    sell_price = TSMC_price_data['Open'][-1]
-    strat_return.append((sell_price - buy_price)/buy_price)
-    stock -= 1
-'''
-# %%
-'''
-stock = 0
-condition1 = (TSMC_price_data['SMA5'] > TSMC_price_data['SMA20'])
-condition2 = (TSMC_price_data['SMA5'] < TSMC_price_data['SMA20'])
-
-for i in range(len(TSMC_price_data)):
-    if condition1[i] and stock == 0:
-        TSMC_price_data['SMA_signal'][i] = 1
-        stock += 1
-    elif condition2[i] and stock == 1:
-        TSMC_price_data['SMA_signal'][i] = -1
-        stock -=  1
-    else:
-        TSMC_price_data['SMA_signal'][i] = 0
-'''
-
 # %%
 TSMC_price_data['return'] = TSMC_price_data['Close'].pct_change()
 strat_return = np.zeros(len(TSMC_price_data))
@@ -102,6 +59,13 @@ for i in range(len(TSMC_price_data)):
         strat_return[i] = TSMC_price_data['return'][i]*TSMC_price_data['SMA_signal'][i]
 
 TSMC_price_data['strat_return'] = strat_return
-# %%
-pf.create_returns_tear_sheet(TSMC_price_data['strat_return'])
 
+# %%
+# benchmark return
+benchmark_return = TSMC_price_data['Close'].pct_change()
+TSMC_price_data['benchmark'] = benchmark_return
+# %%
+pf.create_returns_tear_sheet(returns = TSMC_price_data['strat_return'], benchmark_rets = TSMC_price_data['benchmark'])
+
+
+# %%
