@@ -26,6 +26,7 @@ TSMC_price_data['Close'] = pd.to_numeric(TSMC_price_data['Close'])
 TSMC_price_data['SMA5'] = TSMC_price_data['Close'].rolling(5).mean()
 TSMC_price_data['SMA20'] = TSMC_price_data['Close'].rolling(20).mean()
 
+plt.style.use('seaborn-darkgrid')
 plt.figure(figsize = (12, 6))
 plt.plot(TSMC_price_data['Close'])
 plt.plot(TSMC_price_data['SMA5'])
