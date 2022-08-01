@@ -10,6 +10,7 @@ import os
 from re import S
 from tkinter import Grid
 from tkinter.messagebox import NO
+from tkinter.ttk import Style
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -90,15 +91,29 @@ length = 20
 times_of_std = 2
 df['ma'] = df['close'].rolling(window = length, center = False).mean()
 df['std'] = df['close'].rolling(window = length, center = False).std()
+df['5SMA'] = df['close'].rolling(window = 5, center = False).mean()
+df['34SMA'] = df['close'].rolling(window = 34, center = False).mean()
 
 for i in range(len(df)):
-    df['upper_bound'] = df['ma'] + times_of_std * df['std']
-    df['lower_bound'] = df['ma'] - times_of_std * df['std']
+    df['upper_bound'][i] = df['ma'][i] + times_of_std * df['std'][i]
+    df['lower_bound'][i] = df['ma'][i] - times_of_std * df['std'][i]
+    df['BBW'][i] = (df['upper_bound'][i] - df['lower_bound'][i]) / df['ma'][i]
+    df['threshold'] = 0.25
+    df['spread'][i] = df['5SMA'][i] - df['5SMA'][i-1]
+
 # %%
-plt.figure(figsize = (12, 8))
-plt.plot(df[['ma', 'upper_bound', 'lower_bound']], linestyle =  '--', color = 'gray')
-plt.plot(df['close'], color = 'skyblue')
-plt.grid(True)
+import mplfinance as mpf
+
+candle_data = df[['open', 'high', 'low', 'close', 'volume']]
+BBand = [ mpf.make_addplot(df['lower_bound'], color = 'blue'), 
+          mpf.make_addplot(df['upper_bound'], color = 'blue'),
+          mpf.make_addplot(df['ma'], color = 'gray'),
+          mpf.make_addplot(df['BBW'], panel = 1, ylabel = 'BBW'),
+          mpf.make_addplot(df['threshold'], panel = 1, secondary_y = False), 
+          mpf.make_addplot(df['5SMA'], panel = 2, color = 'red', ylabel = 'SMA'),
+          mpf.make_addplot(df['34SMA'], panel = 2, color = 'green', secondary_y = False)]
+mpf.plot(candle_data, type = 'candle', style = 'binance', addplot = BBand, figratio = (18, 10), title = 'Band width')
+
 
 # %%
 B_or_S = None
@@ -118,13 +133,13 @@ for i in range(len(df)):
         profit_list.append(0)
         profit_fee_list.append(0)
 
-        if df['close'][i-1] > df['lower_bound'][i-1] and df['close'][i] < df['lower_bound'][i]:
+        if df['BBW'][i-1] < df['threshold'][i-1] and df['BBW'][i] > df['threshold'][i] and df['spread'][i] < -165:
             executeSize = money / df['open'][i+1]
             B_or_S = 'S'
             t = i + 1
             short.append(t)
         
-        if df['close'][i-1] < df['upper_bound'][i-1] and df['close'][i] > df['upper_bound'][i]:
+        if df['BBW'][i-1] < df['threshold'][i-1] and df['BBW'][i] > df['threshold'][i] and df['spread'][i] > -165:
             executeSize = money / df['open'][i+1]
             B_or_S = 'B'
             t = i + 1
@@ -134,7 +149,7 @@ for i in range(len(df)):
         profit = executeSize * (df['open'][i+1] - df['open'][i])
         profit_list.append(profit)
 
-        if (df['close'][i-1] >= df['lower_bound'][i-1] and df['close'][i] < df['lower_bound'][i]) or (i == len(df) - 2):
+        if (df['BBW'][i-1] >= df['threshold'][i-1] and df['BBW'][i] < df['threshold'][i]) and df['spread'][i] < -165 or (i == len(df) - 2):
             pl_round = executeSize * (df['open'][i+1] - df['open'][t])
             profit_fee = profit - money * feeRate - (money + pl_round) * feeRate
             profit_fee_list.append(profit_fee)
@@ -149,7 +164,7 @@ for i in range(len(df)):
         profit = executeSize * (df['open'][i] - df['open'][i+1])
         profit_list.append(profit)
 
-        if (df['close'][i-1] <= df['upper_bound'][i-1] and df['close'][i] > df['upper_bound'][i]) or (i == len(df) - 2):
+        if (df['BBW'][i-1] >= df['threshold'][i-1] and df['BBW'][i] > df['threshold'][i]) and (df['spread'][i] > -165) or (i == len(df) - 2):
             pl_round = executeSize * (df['open'][t] - df['open'][i+1])
             profit_fee = profit - money * feeRate - (money + pl_round) * feeRate
             profit_fee_list.append(profit_fee)
@@ -186,23 +201,24 @@ plt.title('Profit & Drawdown', fontsize = 15)
 
 
 # %%
-fig, ax = plt.subplots(figsize = (16, 6))
-df['close'].plot(label = 'Close Price', ax = ax, color = 'gray', grid = True, alpha = 0.8)
-plt.plot(df[['ma', 'upper_bound', 'lower_bound']], linestyle = '--')
-plt.grid(True)
-plt.scatter(df['close'].iloc[buy].index, df['close'].iloc[buy], color = 'red', label = 'Buy', marker = '^', s = 60)
-plt.scatter(df['close'].iloc[sell].index, df['close'].iloc[sell], color = 'red', label = 'Sell', marker = 'v', s = 60)
-plt.scatter(df['close'].iloc[buytocover].index, df['close'].iloc[buytocover], color = 'limegreen', label = 'Buy to Cover', marker = '^', s = 60)
-plt.scatter(df['close'].iloc[short].index, df['close'].iloc[short], color = 'limegreen', label = 'Short', marker = 'v', s = 60)
+fig, ax = plt.subplots(figsize = (16,6))
+
+df['close'].plot(label = 'Close Price', ax = ax, c = 'gray', grid=True, alpha=0.8)
+df['upper_bound'].plot(ax = ax, c = 'blue', grid=True, alpha=0.8)
+df['lower_bound'].plot(ax = ax, c = 'blue', grid=True, alpha=0.8)
+plt.scatter(df['close'].iloc[buy].index, df['close'].iloc[buy],c = 'orangered', label = 'Buy', marker='^', s=60)
+plt.scatter(df['close'].iloc[sell].index, df['close'].iloc[sell],c = 'orangered', label = 'Sell', marker='v', s=60)
+plt.scatter(df['close'].iloc[short].index, df['close'].iloc[short],c = 'limegreen', label = 'Sellshort', marker='v', s=60)
+plt.scatter(df['close'].iloc[buytocover].index, df['close'].iloc[buytocover],c = 'limegreen', label = 'Buytocover', marker='^', s=60)
 
 plt.legend()
 plt.ylabel('USD')
 plt.xlabel('Time')
-plt.title('Price Movement & Trade signal', fontsize = 15)
+plt.title('Price Movement',fontsize  = 16)
 
 # %%
 profit = equity['profitfee'].iloc[-1]
-returns = (equity['profitfee'][-1] - equity['profitfee'][41])
+returns = (equity['profitfee'][-1] - equity['profitfee'][37])
 mdd = abs(equity['drawdown']).max()
 calmarRatio = returns / mdd
 tradeTimes = len(buy) + len(short)
@@ -210,6 +226,10 @@ winRate = len([i for i in profit_fee_list if i > 0]) / len(profit_fee_list)
 profitFactor = sum([i for i in profit_fee_list if i > 0]) / abs(sum([i for i in profit_fee_list if i < 0]))
 WLRatio = np.mean([i for i in profit_fee_list if i > 0]) / abs(np.mean([i for i in profit_fee_list if i < 0]))
 
+# %%
+winRate2 = len([i for i in profit_fee_list if i > 0]) / (len(profit_fee_list) - len([i for i in profit_fee_list if i == 0]))
+print(winRate2)
+# %%
 print(f'profit: ${np.round(profit,2)}')
 print(f'returns: {np.round(returns,4)}%')
 print(f'mdd: {np.round(mdd,4)}%')
@@ -257,9 +277,12 @@ for length in range(10, 110, 10):
 
         df['ma'] = df['close'].rolling(window = length, center = False).mean()
         df['std'] = df['close'].rolling(window = length, center = False).std()
-        #for i in range(len(df)):
-         #   df['upper_bound'][i] = df['ma'][i] + times_of_std * df['std'][i]
-          #  df['lower_bound'][i] = df['ma'][i] - times_of_std * df['std'][i]
+        df['5SMA'] = df['close'].rolling(window = 5, center = False).mean()
+        for i in range(len(df)):
+            df['upper_bound'] = df['ma'] + times_of_std * df['std']
+            df['lower_bound'] = df['ma'] - times_of_std * df['std']
+            df['BBW'] = (df['upper_bound'] - df['lower_bound']) / df['ma']
+            df['threshold'] = 0.25
 
         B_or_S = None
         buy = []
@@ -278,13 +301,13 @@ for length in range(10, 110, 10):
                 profit_list.append(0)
                 profit_fee_list.append(0)
 
-                if df['close'][i-1] > (df['ma'][i-1] - times_of_std * df['std'][i-1]) and df['close'][i] < (df['ma'][i] - times_of_std * df['std'][i]):
+                if df['BBW'][i-1] < df['threshold'][i-1] and df['BBW'][i] > df['threshold'][i] and df['5SMA'][i] < df['ma'][i]:
                     executeSize = money / df['open'][i+1]
                     B_or_S = 'S'
                     t = i + 1
                     short.append(t)
         
-                if df['close'][i-1] < (df['ma'][i-1] + times_of_std * df['std'][i-1]) and df['close'][i] > (df['ma'][i] + times_of_std * df['std'][i]):
+                if df['BBW'][i-1] < df['threshold'][i-1] and df['BBW'][i] > df['threshold'][i] and df['5SMA'][i] > df['ma'][i]:
                     executeSize = money / df['open'][i+1]
                     B_or_S = 'B'
                     t = i + 1
@@ -294,7 +317,7 @@ for length in range(10, 110, 10):
                 profit = executeSize * (df['open'][i+1] - df['open'][i])
                 profit_list.append(profit)
 
-                if (df['close'][i-1] >= df['ma'][i-1] - times_of_std * df['std'][i-1] and df['close'][i] < df['ma'][i] - times_of_std * df['std'][i]) or (i == len(df) - 2):
+                if (df['BBW'][i-1] >= df['threshold'][i-1] and df['BBW'][i] < df['threshold'][i]) and df['5SMA'][i] < df['ma'][i] or (i == len(df) - 2):
                     pl_round = executeSize * (df['open'][i+1] - df['open'][t])
                     profit_fee = profit - money * feeRate - (money + pl_round) * feeRate
                     profit_fee_list.append(profit_fee)
@@ -309,7 +332,7 @@ for length in range(10, 110, 10):
                 profit = executeSize * (df['open'][i] - df['open'][i+1])
                 profit_list.append(profit)
 
-                if (df['close'][i-1] <= df['ma'][i-1] + times_of_std * df['std'][i-1] and df['close'][i] > df['ma'][i] + times_of_std * df['std'][i]) or (i == len(df) - 2):
+                if (df['BBW'][i-1] >= df['threshold'][i-1] and df['BBW'][i] > df['threshold'][i]) and df['5SMA'][i] > df['ma'][i] or (i == len(df) - 2):
                     pl_round = executeSize * (df['open'][t] - df['open'][i+1])
                     profit_fee = profit - money * feeRate - (money + pl_round) * feeRate
                     profit_fee_list.append(profit_fee)
@@ -345,8 +368,8 @@ sns.heatmap(data = pic).set(title='Calmar Ratio')
 fund = 100
 money = 100
 feeRate = 0.02
-length = 40
-times_of_std = 1
+length = 20
+times_of_std = 2
 rule = '1D'
 
 d1 = df_outofsample.resample(rule=rule, closed='right', label='right').first()[['open']]
@@ -358,9 +381,12 @@ df = pd.concat([d1,d2,d3,d4,d5], axis=1)
 
 df['ma'] = df['close'].rolling(window = length, center = False).mean()
 df['std'] = df['close'].rolling(window = length, center = False).std()
-##for i in range(len(df)):
-    ##df['upper_bound'][i] = df['ma'][i] + times_of_std * df['std'][i]
-    ##df['lower_bound'][i] = df['ma'][i] - times_of_std * df['std'][i]
+df['5SMA'] = df['close'].rolling(window = 5, center = False).mean()
+for i in range(len(df)):
+    df['upper_bound'] = df['ma'] + times_of_std * df['std']
+    df['lower_bound'] = df['ma'] - times_of_std * df['std']
+    df['BBW'] = (df['upper_bound'] - df['lower_bound']) / df['ma']
+    df['threshold'] = 0.25
 #%%
 B_or_S = None
 buy = []
@@ -379,13 +405,13 @@ for i in range(len(df)):
         profit_list.append(0)
         profit_fee_list.append(0)
 
-        if df['close'][i-1] > (df['ma'][i-1] - times_of_std * df['std'][i-1]) and df['close'][i] < (df['ma'][i] - times_of_std * df['std'][i]):
+        if df['BBW'][i-1] < df['threshold'][i-1] and df['BBW'][i] > df['threshold'][i] and df['5SMA'][i] < df['ma'][i]:
             executeSize = money / df['open'][i+1]
             B_or_S = 'S'
             t = i + 1
             short.append(t)
-
-        if df['close'][i-1] < (df['ma'][i-1] + times_of_std * df['std'][i-1]) and df['close'][i] > (df['ma'][i] + times_of_std * df['std'][i]):
+        
+        if df['BBW'][i-1] < df['threshold'][i-1] and df['BBW'][i] > df['threshold'][i] and df['5SMA'][i] > df['ma'][i]:
             executeSize = money / df['open'][i+1]
             B_or_S = 'B'
             t = i + 1
@@ -395,13 +421,13 @@ for i in range(len(df)):
         profit = executeSize * (df['open'][i+1] - df['open'][i])
         profit_list.append(profit)
 
-        if (df['close'][i-1] >= df['ma'][i-1] - times_of_std * df['std'][i-1] and df['close'][i] < df['ma'][i] - times_of_std * df['std'][i]) or (i == len(df) - 2):
+        if (df['BBW'][i-1] >= df['threshold'][i-1] and df['BBW'][i] < df['threshold'][i]) and df['5SMA'][i] < df['ma'][i] or (i == len(df) - 2):
             pl_round = executeSize * (df['open'][i+1] - df['open'][t])
             profit_fee = profit - money * feeRate - (money + pl_round) * feeRate
             profit_fee_list.append(profit_fee)
             sell.append(i+1)
             B_or_S = None
-
+        
         else:
             profit_fee = profit
             profit_fee_list.append(profit_fee)
@@ -410,13 +436,13 @@ for i in range(len(df)):
         profit = executeSize * (df['open'][i] - df['open'][i+1])
         profit_list.append(profit)
 
-        if (df['close'][i-1] <= df['ma'][i-1] + times_of_std * df['std'][i-1] and df['close'][i] > df['ma'][i] + times_of_std * df['std'][i]) or (i == len(df) - 2):
+        if (df['BBW'][i-1] >= df['threshold'][i-1] and df['BBW'][i] > df['threshold'][i]) and df['5SMA'][i] > df['ma'][i] or (i == len(df) - 2):
             pl_round = executeSize * (df['open'][t] - df['open'][i+1])
             profit_fee = profit - money * feeRate - (money + pl_round) * feeRate
             profit_fee_list.append(profit_fee)
             buytocover.append(i+1)
             B_or_S = None
-
+        
         else:
             profit_fee = profit
             profit_fee_list.append(profit_fee)
@@ -426,7 +452,7 @@ equity['drawdown_percent'] = (equity['profitfee'] / equity['profitfee'].cummax()
 equity['drawdown'] = equity['profitfee'] - equity['profitfee'].cummax()
 
 profit = equity['profitfee'].iloc[-1]
-returns = (equity['profitfee'][-1] - equity['profitfee'][41])
+returns = (equity['profitfee'][-1] - equity['profitfee'][0])
 mdd = abs(equity['drawdown']).max()
 calmarRatio = returns / mdd
 tradeTimes = len(buy) + len(short)
