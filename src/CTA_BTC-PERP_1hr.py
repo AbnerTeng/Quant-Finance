@@ -1,12 +1,5 @@
-# %% [markdown]
-# ## CTA backtesting framework with BTCUSD and bollingerband strategy
-
-# %% [markdown]
-# ## import packages
-
 # %%
 from ast import parse
-from cmath import nan
 from http.client import responses
 import os
 from re import S
@@ -24,81 +17,6 @@ import time
 
 path = os.getcwd()
 print(path)
-# %% [markdown]
-# ## Data crawling
-
-# %%
-symbol = 'BTC-PERP'
-
-startTime = '2021-1-1'
-endTime = '2022-7-31'
-resolution = 60
-
-startTimeStamp = dt.datetime.strptime(startTime, '%Y-%m-%d').timestamp()
-endTimeStamp = dt.datetime.strptime(endTime, '%Y-%m-%d').timestamp()
-data = []
-
-import tqdm
-for i in tqdm.tqdm(range(100)):
-    while True:
-        if startTimeStamp < endTimeStamp:
-            t1 = startTimeStamp
-            t2 = startTimeStamp + resolution * 1440
-
-            url = f'https://ftx.com/api//markets/{symbol}/candles?resolution={resolution}&limit=1440&start_time={t1}&end_time={t2}'
-            response = requests.get(url)
-            if response.status_code == 200:
-                result = response.json()['result'][:-1]
-                data += result
-            else:
-                print('error: {}, {} ~ {}'.format(symbol, t1, t2))
-
-            startTimeStamp += resolution * 1440
-        else:
-            break
-
-data = pd.DataFrame(data)
-data.index = pd.to_datetime(data['startTime'])
-
-# %% [markdown]
-# ## Tidy data
-
-# %%
-data = data[['open', 'high', 'low', 'close', 'volume']]
-data.to_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_PERP.csv')
-pd.read_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_PERP.csv', parse_dates = True, index_col = 'startTime')
-# %% [markdown]
-# ## Fee rate
-
-# %%
-symbol = 'BTC-PERP'
-startTime = '2021-01-01'
-endTime = '2022-07-31'
-startTimeStamp = dt.datetime.strptime(startTime, '%Y-%m-%d').timestamp()
-endTimeStamp = dt.datetime.strptime(endTime, '%Y-%m-%d').timestamp()
-data = []
-
-while True:
-    if startTimeStamp < endTimeStamp:
-        t1 = startTimeStamp
-        t2 = startTimeStamp + 86400
-
-        url = 'https://ftx.com/api/funding_rates?start_time={}&end_time={}&future={}'.format(t1, t2, symbol)
-        response = requests.get(url)
-        if response.status_code == 200:
-            result = response.json()['result'][:-1][::-1]
-            data += result
-        else:
-            print('error: {}, {} ~ {}'.format(symbol, t1, t2))
-        startTimeStamp += 86400
-    else:
-        break
-
-data = pd.DataFrame(data)
-data.index = pd.to_datetime(data['time'])
-data = data[['rate']]
-data.to_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_funding.csv'.format(symbol.split('-')[0]))
-
 # %%
 pd.read_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_funding.csv')
 pd.read_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_funding.csv', parse_dates=True, index_col='time')
@@ -110,7 +28,7 @@ funding = pd.read_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_funding.cs
 # ## Strategy Backtesting
 # data resample
 # %%
-rule = '1D'
+rule = '1H'
 d1 = data.resample(rule = rule, closed = 'right', label = 'right').first()[['open']]
 d2 = data.resample(rule = rule, closed = 'right', label = 'right').max()[['high']]
 d3 = data.resample(rule = rule, closed = 'right', label = 'right').min()[['low']]
@@ -137,13 +55,6 @@ df['std'] = df['close'].rolling(window = length, center = False).std()
 df['shortSMA'] = df['close'].rolling(window = 5, center = False).mean()
 df['longSMA'] = df['close'].rolling(window = 21, center = False).mean()
 
-df['local_maxima'] = df.close[(df.close.shift(1) < df.close) & (df.close.shift(-1) < df.close)]
-df['local_maxima'][0] = df['close'][0]
-df['local_maxima'] = df['local_maxima'].ffill()
-
-df['local_minima'] = df.close[(df.close.shift(1) > df.close) & (df.close.shift(-1) > df.close)]
-df['local_minima'][0] = df['close'][0]
-df['local_minima'] = df['local_minima'].ffill()
 # %%
 upper_bound_list = [0]
 lower_bound_list = [0]
@@ -164,7 +75,7 @@ for i in range(len(df)):
     BBW_list.append(BBW)
 
 for i in range(len(df)):
-    threshold = 0.25
+    threshold = 0.025
     threshold_list.append(threshold)
 
 for i in range(len(df)):
@@ -178,36 +89,6 @@ BBdata.columns = ['upper_bound', 'lower_bound', 'BBW', 'threshold', 'spread']
 BBdata = BBdata.drop(0)
 BBdata = BBdata.set_index(df.index)
 # %%
-from scipy.stats import norm
-# %%
-BBdata['BBWMA'] = BBdata['BBW'].rolling(window = 10, center = False).mean()
-BBdata['BBWstd'] = BBdata['BBW'].rolling(window = 10, center = False).std()
-BBWP_list = [0]
-for i in range(len(BBdata)):
-    BBWP = norm.cdf(BBdata['BBW'][i], loc = BBdata['BBWMA'][i], scale = BBdata['BBWstd'][i])
-    BBWP_list.append(BBWP)
-BBWP = pd.DataFrame(BBWP_list)
-BBWP = BBWP.drop(0)
-BBWP = BBWP.set_index(BBdata.index)
-BBdata['BBWP'] = BBWP
-BBdata['BBWPMA'] = BBdata['BBWP'].rolling(window = 13, center = False).mean()
-# %%
-RSI_index = [0]
-shortSMA = [0]
-longSMA = [0]
-import talib as ta
-RSI_index = ta.RSI(df['close'], timeperiod = 14)
-shortSMA = RSI_index.rolling(window = 7, center = False).mean()
-longSMA = RSI_index.rolling(window = 14, center = False).mean()
-RSI = pd.DataFrame([RSI_index, shortSMA, longSMA])
-RSI = pd.DataFrame.transpose(RSI)
-RSI.columns = ['RSI', 'shortSMA', 'longSMA']
-RSI = RSI.set_index(df.index)
-
-def line(number):
-    return [number]*len(df)
-
-# %%
 import mplfinance as mpf
 
 candle_data = df[['open', 'high', 'low', 'close', 'volume']]
@@ -215,11 +96,9 @@ BBand = [ mpf.make_addplot(BBdata['lower_bound'], color = 'blue'),
           mpf.make_addplot(BBdata['upper_bound'], color = 'blue'),
           mpf.make_addplot(df['ma'], color = 'gray'),
           mpf.make_addplot(BBdata['BBW'], panel = 1, ylabel = 'BBW'),
-          mpf.make_addplot(BBdata['BBWMA'], panel = 1, secondary_y = False),
-          mpf.make_addplot(RSI['RSI'], panel = 2, ylabel = 'RSI'),
-          mpf.make_addplot(line(30), panel = 2, secondary_y = False),
-          mpf.make_addplot(line(70), panel = 2, secondary_y = False)
-           ]
+          mpf.make_addplot(BBdata['threshold'], panel = 1, secondary_y = False), 
+          mpf.make_addplot(df['shortSMA'], panel = 2, ylabel = 'SMA', color = 'red'),
+          mpf.make_addplot(df['longSMA'], panel = 2, secondary_y = False, color = 'green') ]
 mpf.plot(candle_data, type = 'candle', style = 'binance', addplot = BBand, figratio = (18, 10), title = 'Band width')
 
 
@@ -262,14 +141,14 @@ for i in range(len(df)):
         profit_list.append(0)
         profit_fee_list.append(0)
 
-        if BBdata['BBW'][i-1] > BBdata['BBWMA'][i-1] and BBdata['BBW'][i] < BBdata['BBWMA'][i]:
+        if BBdata['BBW'][i-1] < BBdata['threshold'][i-1] and BBdata['BBW'][i] > BBdata['threshold'][i] and df['shortSMA'][i] < df['longSMA'][i]:
             executeSize = money / df['open'][i+1]
             B_or_S = 'S'
             t = i + 1
             short.append(t)
             t1 = df.index[i+1]
         
-        if BBdata['BBW'][i-1] < BBdata['BBWMA'][i-1] and BBdata['BBW'][i] > BBdata['BBWMA'][i]:
+        if BBdata['BBW'][i-1] < BBdata['threshold'][i-1] and BBdata['BBW'][i] > BBdata['threshold'][i] and df['shortSMA'][i] > df['longSMA'][i]:
             executeSize = money / df['open'][i+1]
             B_or_S = 'B'
             t = i + 1
@@ -282,7 +161,7 @@ for i in range(len(df)):
         t2 = df.index[i+1]
         fundingFee = fundingPayment(df_funding, 'long', executeSize, df.index[t], t2)
 
-        if (BBdata['BBW'][i-1] > BBdata['BBWMA'][i-1] and BBdata['BBW'][i] < BBdata['BBWMA'][i]) or df['close'][i] < df['local_maxima'][i]*0.95 or (i == len(df) - 2):
+        if df['close'][i-1] > BBdata['upper_bound'][i-1] and df['close'][i] < BBdata['upper_bound'][i] or (i == len(df) - 2):
             pl_round = executeSize * (df['open'][i+1] - df['open'][t])
             profit_fee = profit - money * feeRate - (money + pl_round) * feeRate + fundingFee
             profit_fee_list.append(profit_fee)
@@ -300,7 +179,7 @@ for i in range(len(df)):
         t2 = df.index[i+1]
         fundingFee = fundingPayment(df_funding, 'short', executeSize, df.index[t], t2)
 
-        if (BBdata['BBW'][i-1] < BBdata['BBWMA'][i-1] and BBdata['BBW'][i] > BBdata['BBWMA'][i]) or df['close'][i] > df['local_minima'][i]*1.05 or (i == len(df) - 2):
+        if df['close'][i-1] < BBdata['lower_bound'][i-1] and df['close'][i] > BBdata['lower_bound'][i] or (i == len(df) - 2):
             pl_round = executeSize * (df['open'][t] - df['open'][i+1])
             profit_fee = profit - money * feeRate - (money + pl_round) * feeRate + fundingFee
             profit_fee_list.append(profit_fee)
@@ -431,15 +310,7 @@ for Short in [5, 8, 13]:
             df['std'] = df['close'].rolling(window = 20, center = False).std()
             df['shortSMA'] = df['close'].rolling(window = Short, center = False).mean()
             df['longSMA'] = df['close'].rolling(window = Long, center = False).mean()
-
-            df['local_maxima'] = df.close[(df.close.shift(1) < df.close) & (df.close.shift(-1) < df.close)]
-            df['local_maxima'][0] = df['close'][0]
-            df['local_maxima'] = df['local_maxima'].ffill()
-
-            df['local_minima'] = df.close[(df.close.shift(1) > df.close) & (df.close.shift(-1) > df.close)]
-            df['local_minima'][0] = df['close'][0]
-            df['local_minima'] = df['local_minima'].ffill()
-
+            
             upper_bound_list = [0]
             lower_bound_list = [0]
             BBW_list = [0]
@@ -506,7 +377,7 @@ for Short in [5, 8, 13]:
                     t2 = df.index[i+1]
                     fundingFee = fundingPayment(df_funding, 'long', executeSize, df.index[t], t2)
 
-                    if (BBdata['BBW'][i-1] > BBdata['threshold'][i-1] and BBdata['BBW'][i] < BBdata['threshold'][i]) or df['close'][i] < df['local_maxima'][i]*0.97 or (i == len(df) - 2):
+                    if BBdata['BBW'][i] >= 0.4 and df['shortSMA'][i] > df['longSMA'][i] or (i == len(df) - 2):
                         pl_round = executeSize * (df['open'][i+1] - df['open'][t])
                         profit_fee = profit - money * feeRate - (money + pl_round) * feeRate
                         profit_fee_list.append(profit_fee)
@@ -524,7 +395,7 @@ for Short in [5, 8, 13]:
                     t2 = df.index[i+1]
                     fundingFee = fundingPayment(df_funding, 'short', executeSize, df.index[t], t2)
 
-                    if (BBdata['BBW'][i-1] > BBdata['threshold'][i-1] and BBdata['BBW'][i] < BBdata['threshold'][i]) or df['close'][i] < df['local_minima'][i]*1.03 or (i == len(df) - 2):
+                    if BBdata['BBW'][i] >= 0.4 and df['shortSMA'][i] < df['longSMA'][i] or (i == len(df) - 2):
                         pl_round = executeSize * (df['open'][t] - df['open'][i+1])
                         profit_fee = profit - money * feeRate - (money + pl_round) * feeRate
                         profit_fee_list.append(profit_fee)
@@ -675,19 +546,3 @@ plt.legend()
 plt.ylabel('Accumulated Profit')
 plt.xlabel('Time')
 plt.title('Profit & Drawdown',fontsize  = 16)
-
-# %%
-bah_list = [0]
-for i in range(1, len(df), 1):
-    bah = ((df['close'][i] - df['close'][i-1]) / df['close'][i-1]) * 100
-    bah_list.append(bah)
-bah = np.cumsum(bah_list)
-bah = pd.DataFrame(bah)
-bah = bah.set_index(df.index)
-# %%
-equity['bah'] = bah
-# %%
-line1 = plt.plot(equity['profitfee'])
-line2 = plt.plot(bah)
-plt.show()
-# %%
