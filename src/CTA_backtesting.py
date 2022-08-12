@@ -14,6 +14,7 @@ from sqlite3 import PrepareProtocol
 from tkinter import Grid
 from tkinter.messagebox import NO
 from tkinter.ttk import Style
+from unittest.mock import NonCallableMagicMock
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -122,14 +123,15 @@ df = pd.concat([d1, d2, d3, d4, d5], axis = 1)
 df.iloc[0:3]
 # %% [markdown]
 # ## strategy
-# * bollinger band
+# * Bollinger BandWidth
+# * Dual Moving Average Crossover 
 
 # %% [markdown]
 # setting parameters
 
 # %%
-fund = 100
-money = 100
+fund = 10000
+money = 10000
 feeRate = 0.0015
 length = 20
 times_of_std = 2
@@ -138,17 +140,7 @@ df['ma'] = df['close'].rolling(window = length, center = False).mean()
 df['std'] = df['close'].rolling(window = length, center = False).std()
 df['shortSMA'] = df['close'].rolling(window = 13, center = False).mean()
 df['longSMA'] = df['close'].rolling(window = 21, center = False).mean()
-df['ATR'] = pa.atr(high = df.high, low = df.low, close = df.close, length = 14)
 
-df['local_maxima'] = df.close[(df.close.shift(1) < df.close) & (df.close.shift(-1) < df.close)]
-df['local_maxima'][0] = df['close'][0]
-df['local_maxima'] = df['local_maxima'].ffill()
-
-df['local_minima'] = df.close[(df.close.shift(1) > df.close) & (df.close.shift(-1) > df.close)]
-df['local_minima'][0] = df['close'][0]
-df['local_minima'] = df['local_minima'].ffill()
-
-# %%
 maxima_list = [0]
 for i in range(len(df)):
     if df['close'][i] > df['close'][i-1]:
@@ -161,8 +153,8 @@ maxima_list = maxima_list.drop(0)
 maxima_list = maxima_list.set_index(df.index)
 df['maxima'] = maxima_list
 
-# %%
 minima_list = [0]
+minima = df['close'][0]
 for i in range(len(df)):
     if df['close'][i] < df['close'][i-1]:
         minima = df['close'][i]
@@ -173,14 +165,12 @@ minima_list = pd.DataFrame(minima_list)
 minima_list = minima_list.drop(0)
 minima_list = minima_list.set_index(df.index)
 df['minima'] = minima_list
+
 # %%
 upper_bound_list = [0]
 lower_bound_list = [0]
 BBW_list = [0]
 threshold_list = [0]
-spread_list = [0]
-lsl_list = [0]
-ssl_list = [0]
 
 for i in range(len(df)):
     upper_bound = df['ma'][i] + times_of_std * df['std'][i]
@@ -198,49 +188,19 @@ for i in range(len(df)):
     threshold = 0.29
     threshold_list.append(threshold)
 
-for i in range(len(df)):
-    spread = df['shortSMA'][i] - df['shortSMA'][i-1]
-    spread_list.append(spread)
-
-for i in range(len(df)):
-    lsl = df['ma'][i] + df['std'][i]
-    lsl_list.append(lsl)
-
-for i in range(len(df)):
-    ssl = df['ma'][i] - df['std'][i]
-    ssl_list.append(ssl)
-
-BBdata = pd.DataFrame([lsl_list, ssl_list, upper_bound_list, lower_bound_list, BBW_list, threshold_list, spread_list])
+BBdata = pd.DataFrame([ upper_bound_list, lower_bound_list, BBW_list, threshold_list])
 BBdata = pd.DataFrame.transpose(BBdata)
-BBdata.columns = ['lsl', 'ssl', 'upper_bound', 'lower_bound', 'BBW', 'threshold', 'spread']
+BBdata.columns = ['upper_bound', 'lower_bound', 'BBW', 'threshold']
 
 BBdata = BBdata.drop(0)
 BBdata = BBdata.set_index(df.index)
-
-BBdata['BBWMA'] = BBdata['BBW'].rolling(window = 20, center = False).mean()
-
-# %%
-RSI_index = [0]
-shortSMA = [0]
-longSMA = [0]
-import talib as ta
-RSI_index = ta.RSI(df['close'], timeperiod = 14)
-shortSMA = RSI_index.rolling(window = 7, center = False).mean()
-longSMA = RSI_index.rolling(window = 14, center = False).mean()
-RSI = pd.DataFrame([RSI_index, shortSMA, longSMA])
-RSI = pd.DataFrame.transpose(RSI)
-RSI.columns = ['RSI', 'shortSMA', 'longSMA']
-RSI = RSI.set_index(df.index)
-
-def line(number):
-    return [number]*len(df)
 
 # %%
 import mplfinance as mpf
 
 candle_data = df[['open', 'high', 'low', 'close', 'volume']]
-BBand = [ mpf.make_addplot(df['local_maxima'], color = 'blue'),
-          mpf.make_addplot(df['local_minima'], color = 'red'),
+BBand = [ mpf.make_addplot(df['maxima'], color = 'blue'),
+          mpf.make_addplot(df['minima'], color = 'red'),
           mpf.make_addplot(df['ma'], color = 'gray'),
           mpf.make_addplot(df['shortSMA'], panel = 1, ylabel = 'SMA'),
           mpf.make_addplot(df['longSMA'], panel = 1, secondary_y = False),
@@ -250,8 +210,10 @@ BBand = [ mpf.make_addplot(df['local_maxima'], color = 'blue'),
 mpf.plot(candle_data, type = 'candle', style = 'binance', addplot = BBand, figratio = (18, 10), title = 'Band width')
 
 
-# %%
+# %% [markdown]
 # Include funding rate
+
+# %%
 rule = '1H'
 df_hour = data.resample(rule = rule, closed = 'right', label = 'right').first()['open']
 df_funding = pd.concat([df_hour, funding], axis = 1)
@@ -309,7 +271,7 @@ for i in range(len(df)):
         t2 = df.index[i+1]
         fundingFee = fundingPayment(df_funding, 'long', executeSize, df.index[t], t2)
 
-        if (BBdata['BBW'][i-1] >= BBdata['threshold'][i-1] and BBdata['BBW'][i] < BBdata['threshold'][i]) or df['shortSMA'][i] < df['longSMA'][i] or df['close'][i] <= df['maxima'][i]*0.9 or (i == len(df) - 2):
+        if (BBdata['BBW'][i-1] >= BBdata['threshold'][i-1] and BBdata['BBW'][i] < BBdata['threshold'][i]) or df['shortSMA'][i] < df['longSMA'][i] or df['close'][i] <= df['maxima'][i]*0.89 or (i == len(df) - 2):
             pl_round = executeSize * (df['open'][i+1] - df['open'][t])
             profit_fee = profit - money * feeRate - (money + pl_round) * feeRate + fundingFee
             profit_fee_list.append(profit_fee)
@@ -327,7 +289,7 @@ for i in range(len(df)):
         t2 = df.index[i+1]
         fundingFee = fundingPayment(df_funding, 'short', executeSize, df.index[t], t2)
 
-        if (BBdata['BBW'][i-1] >= BBdata['threshold'][i-1] and BBdata['BBW'][i] < BBdata['threshold'][i]) or df['shortSMA'][i] > df['longSMA'][i] or df['close'][i] >= df['minima'][i]*1.1 or (i == len(df) - 2):
+        if (BBdata['BBW'][i-1] >= BBdata['threshold'][i-1] and BBdata['BBW'][i] < BBdata['threshold'][i]) or df['shortSMA'][i] > df['longSMA'][i] or df['close'][i] >= df['minima'][i]*1.11 or (i == len(df) - 2):
             pl_round = executeSize * (df['open'][t] - df['open'][i+1])
             profit_fee = profit - money * feeRate - (money + pl_round) * feeRate + fundingFee
             profit_fee_list.append(profit_fee)
@@ -349,8 +311,9 @@ print(short)
 print(sell)
 print(buytocover)
 # %%
-equity['drawdown_percent'] = (equity['profitfee'] / equity['profitfee'].cummax()) - 1
-equity['drawdown'] = equity['profitfee'] - equity['profitfee'].cummax()
+equity['equity_value'] = equity['profitfee'] + fund
+equity['drawdown_percent'] = (equity['equity_value'] / equity['equity_value'].cummax()) - 1
+equity['drawdown'] = equity['equity_value'] - equity['equity_value'].cummax()
 # %%
 fig, ax = plt.subplots(figsize = (16, 6))
 high_index = equity[equity['profitfee'].cummax() == equity['profitfee']].index
@@ -379,42 +342,66 @@ plt.xlabel('Time')
 plt.title('Price Movement',fontsize  = 16)
 
 # %%
-profit = equity['profitfee'].iloc[-1]
-returns = (equity['profitfee'][-1] - equity['profitfee'][37])
-mdd = abs(equity['drawdown']).max()
-calmarRatio = returns / mdd
-tradeTimes = len(buy) + len(short)
-winRate = len([i for i in profit_fee_list if i > 0]) / len(profit_fee_list)
-profitFactor = sum([i for i in profit_fee_list if i > 0]) / abs(sum([i for i in profit_fee_list if i < 0]))
-WLRatio = np.mean([i for i in profit_fee_list if i > 0]) / abs(np.mean([i for i in profit_fee_list if i < 0]))
+equity['unit_profit'] = profit_fee_list
+daily_returns = [0]
+for i in np.arange(1, len(equity), 1):
+    dr = ((equity['equity_value'][i] - equity['equity_value'][i-1]) / equity['equity_value'][i-1])*100
+    daily_returns.append(dr)
+daily_returns = pd.DataFrame(daily_returns)
+daily_returns = daily_returns.set_index(equity.index)
+daily_returns.columns = ['daily_returns']
+equity['daily_returns'] = daily_returns
+equity['downside_return'] = equity['unit_profit'].loc[equity['unit_profit'] < 0]
+equity['downside_return'] = equity['downside_return'].fillna(0)
+# %%
+sqd_list = [0]
+for i in np.arange(1, len(equity), 1):
+    sqd = ((equity['daily_returns'][i] - np.mean(equity['daily_returns']))) ** 2
+    sqd_list.append(sqd)
+var = sum(sqd_list) / len(equity)
+daily_vol = var ** 0.5
+annual_vol = (252 ** 0.5) * daily_vol
 
 # %%
-winRate2 = len([i for i in profit_fee_list if i > 0]) / (len(profit_fee_list) - len([i for i in profit_fee_list if i == 0]))
-print(winRate2)
+equity['downside_return'] = equity['unit_profit'].loc[equity['unit_profit'] < 0]
+equity['downside_return'] = equity['downside_return'].fillna(0)
+equity['downside_return'] = equity['downside_return'] / fund
+dssqd_list = [0]
+for i in np.arange(1, len(equity), 1):
+    dssqd = (equity['downside_return'][i] - np.mean(equity['downside_return'])) ** 2
+    dssqd_list.append(dssqd)
+dsvar = sum(dssqd_list) / len(equity)
+daily_dsvol = dsvar ** 0.5
+dsvol = (len(equity) ** 0.5) * daily_dsvol
+# %%
+from datetime import datetime
+ax = equity['equity_value'].plot(figsize = (12, 8), title = 'BTC-PERP', ylabel = 'USD')
+ax.vlines(x=[datetime(2022, 3, 1), '2022-03-01'], ymin = 10000, ymax = 20000, color = 'r', linestyle = '--')
+ax.legend()
+plt.show()
+
+# %%
+profit = equity['profitfee'].iloc[-1] 
+returns = (equity['equity_value'][-1] / equity['equity_value'][0])-1 ## cumulated return
+mdd = abs(equity['drawdown_percent']).max() # mdd
+calmarRatio = returns / mdd # risk return ratio
+tradeTimes = len(buy) + len(short)
+annual_returns = ((equity['equity_value'][-1] / 10000) ** (1 / (len(df) / 365)) - 1)*100
+sharpe_ratio = annual_returns / annual_vol # sharpe ratio
+sortino_ratio = returns / dsvol
+
 # %%
 print(f'profit: ${np.round(profit,2)}')
-print(f'returns: {np.round(returns,4)}%')
-print(f'mdd: {np.round(mdd,4)}%')
+print(f'returns: {np.round(returns,4)}')
+print(f'mdd: {np.round(mdd,4)}')
 print(f'calmarRatio: {np.round(calmarRatio,2)}')
 print(f'tradeTimes: {tradeTimes}')
-print(f'winRate: {np.round(winRate,4)*100}%')
-print(f'profitFactor: {np.round(profitFactor,2)}')
-print(f'winLossRatio: {np.round(WLRatio,2)}')
-# %%
-var_list = [0]
-for i in range(len(equity)):
-    var = (equity['profitfee'][i]/100 - np.mean(equity['profitfee'])/100) ** 2
-    var_list.append(var)
-annual_vol = ((sum(var_list) ** 0.5)*len([i for i in profit_fee_list if i != 0])) ** 0.5
+print(f'annual_returns: {annual_returns}')
+print(f'annual_volatility: {annual_vol}')
+print(f'sharpe_ratio: {sharpe_ratio}')
+print(f'sortino_ratio: {sortino_ratio}')
 
-# %%
-equity_value = equity['profitfee']*100 + 10000
-returns = (equity['profitfee'][-1] - equity['profitfee'][37])
-annual_returns = ((equity_value[-1] / 10000) ** (1 / (len(df) / 365))) -1
-annual_vol = ((sum(var_list) ** 0.5)*len([i for i in profit_fee_list if i != 0])) ** 0.5
-mdd = abs(equity['drawdown']).max()
-sharpe_ratio = annual_returns * 100 / annual_vol
-calmarRatio = returns / mdd
+
 # %% [markdown]
 # ## Strategy optimize
 
@@ -430,8 +417,8 @@ df_open = df['open']
 
 # %%
 optimizationList = []
-fund = 100
-money = 100
+fund = 10000
+money = 10000
 feeRate = 0.0015
 
 rule = '1D'
@@ -469,6 +456,7 @@ for sl_point in np.arange(0.05, 0.2, 0.01):
         df['maxima'] = maxima_list
 
         minima_list = [0]
+        minima = df['close'][0]
         for i in range(len(df)):
             if df['close'][i] < df['close'][i-1]:
                 minima = df['close'][i]
@@ -577,15 +565,54 @@ for sl_point in np.arange(0.05, 0.2, 0.01):
                     t1 = df.index[i+1]
 
         equity = pd.DataFrame({'profit': np.cumsum(profit_list), 'profitfee': np.cumsum(profit_fee_list)}, index = df.index)
-        equity['drawdown_percent'] = (equity['profitfee'] / equity['profitfee'].cummax()) - 1
-        equity['drawdown'] = equity['profitfee'] - equity['profitfee'].cummax()
-        returns = (equity['profitfee'][-1] - equity['profitfee'][41])
-        mdd = abs(equity['drawdown']).max()
-        calmarRatio = returns / mdd
 
-        optimizationList.append([sl_point, threshold, returns, calmarRatio])
+        equity['equity_value'] = equity['profitfee'] + fund
+        equity['drawdown_percent'] = (equity['equity_value'] / equity['equity_value'].cummax()) - 1
+        equity['drawdown'] = equity['equity_value'] - equity['equity_value'].cummax()
+
+        equity['unit_profit'] = profit_fee_list
+        daily_returns = [0]
+        for i in np.arange(1, len(equity), 1):
+            dr = (equity['equity_value'][i] - equity['equity_value'][i-1]) / equity['equity_value'][i-1]
+            daily_returns.append(dr)
+        daily_returns = pd.DataFrame(daily_returns)
+        daily_returns = daily_returns.set_index(equity.index)
+        daily_returns.columns = ['daily_returns']
+        equity['daily_returns'] = daily_returns
+        equity['downside_return'] = equity['unit_profit'].loc[equity['unit_profit'] < 0]
+        equity['downside_return'] = equity['downside_return'].fillna(0)
+
+        sqd_list = [0]
+        for i in np.arange(1, len(equity), 1):
+            sqd = ((equity['daily_returns'][i] - np.mean(equity['daily_returns']))) ** 2
+            sqd_list.append(sqd)
+        var = sum(sqd_list) / len(equity)
+        daily_vol = var ** 0.5
+        annual_vol = (252 ** 0.5) * daily_vol
+
+        equity['downside_return'] = equity['unit_profit'].loc[equity['unit_profit'] < 0]
+        equity['downside_return'] = equity['downside_return'].fillna(0)
+        equity['downside_return'] = equity['downside_return'] / fund
+        dssqd_list = [0]
+        for i in np.arange(1, len(equity), 1):
+            dssqd = (equity['downside_return'][i] - np.mean(equity['downside_return'])) ** 2
+            dssqd_list.append(dssqd)
+        dsvar = sum(dssqd_list) / len(equity)
+        daily_dsvol = dsvar ** 0.5
+        dsvol = (len(equity) ** 0.5) * daily_dsvol
+
+        profit = equity['profitfee'].iloc[-1] 
+        returns = (equity['equity_value'][-1] / equity['equity_value'][0]) - 1 ## cumulated return
+        mdd = abs(equity['drawdown_percent']).max() # mdd
+        calmarRatio = returns / mdd # risk return ratio
+        tradeTimes = len(buy) + len(short)
+        annual_returns = ((equity['equity_value'][-1] / 10000) ** (1 / (len(df) / 365)) - 1)*100
+        sharpe_ratio = annual_returns / (annual_vol * 100)  # sharpe ratio
+        sortino_ratio = returns / dsvol
+
+        optimizationList.append([sl_point, threshold, profit, returns, mdd, calmarRatio, tradeTimes, annual_returns, annual_vol, sharpe_ratio, sortino_ratio])
 # %%
-optResult = pd.DataFrame(optimizationList, columns = ['sl_point', 'threshold', 'returns', 'calmarRatio'])
+optResult = pd.DataFrame(optimizationList, columns = ['sl_point', 'threshold', 'profit', 'returns', 'mdd', 'calmarRatio', 'tradeTimes', 'annual_returns', 'annual_vol', 'sharpe_ratio', 'sortino_ratio'])
 optResult
 # %%
 pic = optResult.pivot('sl_point', 'threshold', 'returns')
@@ -595,13 +622,13 @@ pic = optResult.pivot('sl_point', 'threshold', 'calmarRatio')
 sns.heatmap(data = pic).set(title='Calmar Ratio')
 
 # %% [markdown]
-# ## 0.12 0.29 and 0.11 0.29
+# ## 0.12 0.29 and 0.11 0.29 and 0.15 0.29
 # %% [markdown]
 # ## Out of sample
 
 # %%
-fund = 100
-money = 100
+fund = 10000
+money = 10000
 feeRate = 0.0015
 length = 20
 times_of_std = 2
@@ -616,7 +643,7 @@ df = pd.concat([d1,d2,d3,d4,d5], axis=1)
 
 df['ma'] = df['close'].rolling(window = length, center = False).mean()
 df['std'] = df['close'].rolling(window = length, center = False).std()
-df['shortSMA'] = df['close'].rolling(window = 5, center = False).mean()
+df['shortSMA'] = df['close'].rolling(window = 13, center = False).mean()
 df['longSMA'] = df['close'].rolling(window = 21, center = False).mean()
 
 maxima_list = [0]
@@ -632,6 +659,7 @@ maxima_list = maxima_list.set_index(df.index)
 df['maxima'] = maxima_list
 
 minima_list = [0]
+minima = df['close'][0]
 for i in range(len(df)):
     if df['close'][i] < df['close'][i-1]:
         minima = df['close'][i]
@@ -716,7 +744,7 @@ short = []
 buytocover = []
 profit_list = [0]
 profit_fee_list = [0]
-sl_point = 0.12
+sl_point = 0.11
 
 for i in range(len(df)):
 
@@ -787,8 +815,9 @@ print(short)
 print(sell)
 print(buytocover)
 # %%
-equity['drawdown_percent'] = (equity['profitfee'] / equity['profitfee'].cummax()) - 1
-equity['drawdown'] = equity['profitfee'] - equity['profitfee'].cummax()
+equity['equity_value'] = equity['profitfee'] + fund
+equity['drawdown_percent'] = (equity['equity_value'] / equity['equity_value'].cummax()) - 1
+equity['drawdown'] = equity['equity_value'] - equity['equity_value'].cummax()
 
 # %%
 fig, ax = plt.subplots(figsize = (16,6))
@@ -818,41 +847,57 @@ plt.xlabel('Time')
 plt.title('Price Movement',fontsize  = 16)
 
 # %%
-profit = equity['profitfee'].iloc[-1]
-returns = (equity['profitfee'][-1] - equity['profitfee'][37])
-mdd = abs(equity['drawdown']).max()
-calmarRatio = returns / mdd
-tradeTimes = len(buy) + len(short)
-winRate = len([i for i in profit_fee_list if i > 0]) / len(profit_fee_list)
-profitFactor = sum([i for i in profit_fee_list if i > 0]) / abs(sum([i for i in profit_fee_list if i < 0]))
-WLRatio = np.mean([i for i in profit_fee_list if i > 0]) / abs(np.mean([i for i in profit_fee_list if i < 0]))
-winRate2 = len([i for i in profit_fee_list if i > 0]) / (len(profit_fee_list) - len([i for i in profit_fee_list if i == 0]))
+equity['unit_profit'] = profit_fee_list
+daily_returns = [0]
+for i in np.arange(1, len(equity), 1):
+    dr = ((equity['equity_value'][i] - equity['equity_value'][i-1]) / equity['equity_value'][i-1])*100
+    daily_returns.append(dr)
+daily_returns = pd.DataFrame(daily_returns)
+daily_returns = daily_returns.set_index(equity.index)
+daily_returns.columns = ['daily_returns']
+equity['daily_returns'] = daily_returns
+equity['downside_return'] = equity['unit_profit'].loc[equity['unit_profit'] < 0]
+equity['downside_return'] = equity['downside_return'].fillna(0)
+# %%
+sqd_list = [0]
+for i in np.arange(1, len(equity), 1):
+    sqd = ((equity['daily_returns'][i] - np.mean(equity['daily_returns']))) ** 2
+    sqd_list.append(sqd)
+var = sum(sqd_list) / len(equity)
+daily_vol = var ** 0.5
+annual_vol = (252 ** 0.5) * daily_vol
 
-print(winRate2)
+equity['downside_return'] = equity['unit_profit'].loc[equity['unit_profit'] < 0]
+equity['downside_return'] = equity['downside_return'].fillna(0)
+equity['downside_return'] = equity['downside_return'] / fund
+dssqd_list = [0]
+for i in np.arange(1, len(equity), 1):
+    dssqd = (equity['downside_return'][i] - np.mean(equity['downside_return'])) ** 2
+    dssqd_list.append(dssqd)
+dsvar = sum(dssqd_list) / len(equity)
+daily_dsvol = dsvar ** 0.5
+dsvol = (len(equity) ** 0.5) * daily_dsvol
+
+# %%
+profit = equity['profitfee'].iloc[-1] 
+returns = (equity['equity_value'][-1] / equity['equity_value'][0]) - 1 ## cumulated return
+mdd = abs(equity['drawdown_percent']).max() # mdd
+calmarRatio = returns / mdd # risk return ratio
+tradeTimes = len(buy) + len(short)
+annual_returns = ((equity['equity_value'][-1] / 10000) ** (1 / (len(df) / 365)) - 1)*100
+sharpe_ratio = annual_returns / annual_vol # sharpe ratio
+sortino_ratio = returns / dsvol
+
+# %%
 print(f'profit: ${np.round(profit,2)}')
-print(f'returns: {np.round(returns,4)}%')
-print(f'mdd: {np.round(mdd,4)}%')
+print(f'returns: {np.round(returns,4)}')
+print(f'mdd: {np.round(mdd,4)}')
 print(f'calmarRatio: {np.round(calmarRatio,2)}')
 print(f'tradeTimes: {tradeTimes}')
-print(f'winRate: {np.round(winRate,4)*100}%')
-print(f'profitFactor: {np.round(profitFactor,2)}')
-print(f'winLossRatio: {np.round(WLRatio,2)}')
-
-# %%
-var_list = [0]
-for i in range(len(equity)):
-    var = (equity['profitfee'][i]/100 - np.mean(equity['profitfee'])/100) ** 2
-    var_list.append(var)
-annual_vol = ((sum(var_list) ** 0.5)*len([i for i in profit_fee_list if i != 0])) ** 0.5
-
-# %%
-equity_value = equity['profitfee']*100 + 10000
-returns = (equity['profitfee'][-1] - equity['profitfee'][37])
-annual_returns = ((equity_value[-1] / 10000) ** (1 / (len(df) / 365))) -1
-annual_vol = ((sum(var_list) ** 0.5)*len([i for i in profit_fee_list if i != 0])) ** 0.5
-mdd = abs(equity['drawdown']).max()
-sharpe_ratio = annual_returns * 100 / annual_vol
-calmarRatio = returns / mdd
+print(f'annual_returns: {annual_returns}')
+print(f'annual_volatility: {annual_vol}')
+print(f'sharpe_ratio: {sharpe_ratio}')
+print(f'sortino_ratio: {sortino_ratio}')
 # %%
 bah_list = [0]
 for i in range(1, len(df), 1):
