@@ -125,7 +125,6 @@ if (__name__ == "__main__"):
     #print(list(macd.signalLine()))
     macd.drawPicture()
     strat = strategy(MACD)
-    strat.base_cond()
     strat.MACD_strat()
 
 
