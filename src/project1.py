@@ -42,18 +42,29 @@ plt.show()
 # I use an empty array to store my signal
 
 # %%
-condition1 = TSMC_price_data['SMA5'] >= TSMC_price_data['SMA20']
-condition2 = TSMC_price_data['SMA5'] < TSMC_price_data['SMA20']
-signal = []
-## stock = 0
+condition = []
 
 for i in range(len(TSMC_price_data)):
-    if  condition1[i]:
+
+    if TSMC_price_data['SMA5'][i] >= TSMC_price_data['SMA20'][i]:
+        condition_list = condition.append('+')
+
+    elif TSMC_price_data['SMA5'][i] < TSMC_price_data['SMA20'][i]:
+        condition_list = condition.append('-')
+
+    else:
+        condition_list = condition.append('None')
+
+signal = []
+
+for i in range(len(TSMC_price_data)):
+    if condition[i] == '+':
         stock = 1
-        signal.append(1)
-    elif condition2[i] and stock == 1:
+        signal.append('Buy')
+
+    elif condition[i] == '-' and stock == 1:
         stock -= 1
-        signal.append(-1)
+        signal.append('Sell')
     else:
         signal.append(0)
 
@@ -63,23 +74,28 @@ TSMC_price_data['SMA_signal'] = pd.Series(index = TSMC_price_data.index, data = 
 # Calculate the daily return
 
 # %%
-TSMC_price_data['return'] = pd.Series(np.zeros(len(TSMC_price_data)))
-i = 2
-for i in range(len(TSMC_price_data)):
-    TSMC_price_data['return'][i] = ((TSMC_price_data['Close'][i] - TSMC_price_data['Close'][i-1]) / TSMC_price_data['Close'][i-1])
+buy_n_hold_list = [0]
+
+for i in range(1, len(TSMC_price_data), 1):
+    buy_n_hold= ((TSMC_price_data['Close'][i] - TSMC_price_data['Close'][i-1]) / TSMC_price_data['Close'][i-1])
+    buy_n_hold_list.append(buy_n_hold)
     
-strat_return = np.zeros(len(TSMC_price_data))
+strat_return_list = [0]
 
-for i in range(len(TSMC_price_data)):
-    if TSMC_price_data['SMA_signal'][i] == 1:
-        strat_return[i] = TSMC_price_data['return'][i+1]*TSMC_price_data['SMA_signal'][i]
-    elif TSMC_price_data['SMA_signal'][i] == -1:
-        strat_return[i] = TSMC_price_data['return'][i+1]*TSMC_price_data['SMA_signal'][i]
+for i in range(1, len(TSMC_price_data), 1):
+    if TSMC_price_data['SMA_signal'][i] == 'Buy':
+        strat_return = ((TSMC_price_data['Open'][i+1] - TSMC_price_data['Close'][i]) / TSMC_price_data['Close'][i]) * 1
+        strat_return_list.append(strat_return)
 
-TSMC_price_data['strat_return'] = strat_return
+    elif TSMC_price_data['SMA_signal'][i] == 'Sell' or TSMC_price_data['SMA_signal'][i] == 0:
+        strat_return = 0
+        strat_return_list.append(strat_return)
+
+TSMC_price_data['benchmark'] = buy_n_hold_list
+TSMC_price_data['strat_return'] = strat_return_list
 
 # %%
-pf.create_returns_tear_sheet(returns = TSMC_price_data['strat_return'], benchmark_rets = TSMC_price_data['return'])
+pf.create_returns_tear_sheet(returns = TSMC_price_data['strat_return'], benchmark_rets = TSMC_price_data['benchmark'])
 
 
 # %% [markdown]
