@@ -15,10 +15,10 @@ class DataIO():
     
     @staticmethod
     def readCSV(filename) -> DataFrame:
-        data = pd.read_csv(filename)
-        data.index = pd.DatetimeIndex(data['Date'])
-        return data
+        df = pd.read_csv(filename)
+        df.index = pd.DatetimeIndex(df['Date'])
+        return df
 
     @staticmethod
-    def writeCSV(self, filename, data):
-        data.to_csv(filename)
+    def writeCSV(self, filename, df):
+        df.to_csv(filename)
