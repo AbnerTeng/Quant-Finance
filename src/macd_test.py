@@ -1,3 +1,4 @@
+# %%
 import pandas as pd #引入pandas讀取股價歷史資料CSV檔
 import sys, os
 sys.path.insert(1, '../')
@@ -46,7 +47,8 @@ class MACD():
         return self.df['hist']
 
 class strategy(MACD):
-    def base_cond(self):
+    def __init__(self, df):
+        super().__init__(df)
 
         self.money = 100
         self.fee = 0.001425
@@ -59,7 +61,6 @@ class strategy(MACD):
         self.profit_fee_list = [0]
 
     def MACD_strat(self):
-
         for i in range(len(self.df)):
 
             if i == len(self.df) - 1:
@@ -74,7 +75,7 @@ class strategy(MACD):
                     self.position = 'B'
                     self.t = i + 1
                     self.buy.append(self.t)
-                
+
                 if (self.df['MACD'][i-1] > self.df['signal'][i-1] and self.df['MACD'][i] < self.df['signal'][i]) and (self.df['MACD'][i] > 0) and (self.df['Close'][i] < self.df['200EMA'][i]):
                     self.executeSize = self.money / self.df['Open'][i+1]
                     self.position = 'S'
@@ -91,7 +92,7 @@ class strategy(MACD):
                     self.profit_fee_list.append(self.profit_fee)
                     self.sell.append(i+1)
                     self.position = None
-                
+
                 else:
                     self.profit_fee = self.profit
                     self.profit_fee_list.append(self.profit_fee)
@@ -110,8 +111,8 @@ class strategy(MACD):
                 else:
                     self.profit_fee = self.profit
                     self.profit_fee_list.append(self.profit_fee)
-        
-        self.equity = pd.DataFrame({'profit': np.cumsum(self.profit_list)}, {'profitfee': np.cumsum(self.profit_fee_list)}, index = self.df.index)
+
+        self.equity = pd.DataFrame({'profit': np.cumsum(self.profit_list), 'profitfee': np.cumsum(self.profit_fee_list)}, index = self.df.index)
         print(self.equity)
         self.equity.plot(grid = True, figsize = (12, 8))
         plt.show()
@@ -124,7 +125,9 @@ if (__name__ == "__main__"):
     macd = MACD(df)
     #print(list(macd.signalLine()))
     macd.drawPicture()
-    strat = strategy(MACD)
+    strat = strategy(df)
     strat.MACD_strat()
 
 
+
+# %%
