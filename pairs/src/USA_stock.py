@@ -6,7 +6,8 @@ import datetime
 import os
 import matplotlib.pyplot as plt
 
-df = pd.read_csv("nasdaq_tech.csv")
+csv_name = "nasdaq_tech.csv"
+df = pd.read_csv(csv_name)
 stock_id = df['Symbol']
 print(stock_id)
 print(type(stock_id))
