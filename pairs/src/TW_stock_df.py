@@ -18,8 +18,8 @@ print(listed)
 
 stock_id = listed["有價證券代號"]
 stock_num = stock_id.apply(lambda x: str(x)+ ".TW")
-stock_num
-
+stock_num ## pandas series
+# %%
 
 def input(stock_id, time_start, time_end):
     seconds = 24 * 60 * 60
