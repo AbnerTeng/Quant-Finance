@@ -75,13 +75,18 @@ def strangle_payoff(S, K_lc, K_lp):
     return [x+y for x,y in zip(P1, P2)]
 
 ## Define stock price range
-S = [x for x in range(12450, 14450, 10)]
+
+Spot = 13450
+low = Spot - 1000
+high = Spot + 1000
+step = 10
+S = [x for x in range(low, high, step)]
 
 ## Define payoff and profit graph
-fig, ax = plt.subplots(nrows = 1, ncols = 2, sharex = True, sharey = True, figsize = (20, 10))
-fig.suptitle('Payoff of Options', fontsize = 20, fontweight = 'bold')
-fig.text(0.5, 0.04, 'Stock/Underlying Price ($)', ha='center', fontsize=14, fontweight='bold')
-fig.text(0.08, 0.5, 'Option Payoff and Profit($)', va='center', rotation='vertical', fontsize=14, fontweight='bold')
+##fig, ax = plt.subplots(nrows = 1, ncols = 2, sharex = True, sharey = True, figsize = (20, 10))
+##fig.suptitle('Payoff of Options', fontsize = 20, fontweight = 'bold')
+##fig.text(0.5, 0.04, 'Stock/Underlying Price ($)', ha='center', fontsize=14, fontweight='bold')
+##fig.text(0.08, 0.5, 'Option Payoff and Profit($)', va='center', rotation='vertical', fontsize=14, fontweight='bold')
 
 ## Enter those params
 def paynpro_graph(S, K, K_lc, K_sc, P_lc, P_lp, P_sc):
@@ -130,7 +135,10 @@ def strangle_plot(S, K_lc, K_lp, P_lc, P_lp):
     P1 = strangle_payoff(S, K_lc, K_lp)
     P_longcall = long_call(S, K_lc, P_lc)
     P_longput = long_put(S, K_lp, P_lp)
-    plt.figure(figsize = (20, 10))
+    plt.figure(figsize = (16, 8))
+    plt.suptitle('Payoff and profit of Options', fontsize = 20, fontweight = 'bold')
+    plt.text(0.5, 0.04, 'Stock/Underlying Price ($)', ha='center', fontsize=14, fontweight='bold')
+    plt.text(0.08, 0.5, 'Option Payoff and Profit($)', va='center', rotation='vertical', fontsize=14, fontweight='bold')
     plt.plot(S, P, 'black')
     plt.plot(S, P1, 'red')
     plt.plot(S, P_longcall, 'r--')
@@ -138,6 +146,5 @@ def strangle_plot(S, K_lc, K_lp, P_lc, P_lp):
     plt.legend(['Strangle Profit', 'Strangle Payoff', 'Long Call', 'Long Put'])
     plt.title('Strangle')
     plt.show()
-
 
 strangle_plot(S, 13500, 13400, 198, 140)
