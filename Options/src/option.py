@@ -64,11 +64,21 @@ def straddle_payoff(S, K):
     P2 = long_put_payoff(S, K)
     return [x+y for x,y in zip(P1, P2)]
 
+def strangle(S, K_lc, K_lp, P_lc, P_lp):
+    P1 = long_call(S, K_lc, P_lc)
+    P2 = long_put(S, K_lp, P_lp)
+    return [x+y for x,y in zip(P1, P2)]
+
+def strangle_payoff(S, K_lc, K_lp):
+    P1 = long_call_payoff(S, K_lc)
+    P2 = long_put_payoff(S, K_lp)
+    return [x+y for x,y in zip(P1, P2)]
+
 ## Define stock price range
-S = [x for x in range(13000, 15000, 10)]
+S = [x for x in range(12450, 14450, 10)]
 
 ## Define payoff and profit graph
-fig, ax = plt.subplots(nrows = 1, ncols = 2, sharex = True, sharey = True, figsize = (20, 20))
+fig, ax = plt.subplots(nrows = 1, ncols = 2, sharex = True, sharey = True, figsize = (20, 10))
 fig.suptitle('Payoff of Options', fontsize = 20, fontweight = 'bold')
 fig.text(0.5, 0.04, 'Stock/Underlying Price ($)', ha='center', fontsize=14, fontweight='bold')
 fig.text(0.08, 0.5, 'Option Payoff and Profit($)', va='center', rotation='vertical', fontsize=14, fontweight='bold')
@@ -100,5 +110,34 @@ def paynpro_graph(S, K, K_lc, K_sc, P_lc, P_lp, P_sc):
     plt.title('Straddle')
     plt.show()
 
-paynpro_graph(S, 13800, 14000, 13600, 26, 75, 265)
-# %%
+##paynpro_graph(S, 13800, 14000, 13600, 26, 75, 265)
+
+def straddle_plot(S, K, P_lc, P_lp):
+    P = straddle(S, K, P_lc, P_lp)
+    P1 = straddle_payoff(S, K)
+    P_longcall = long_call(S, K, P_lc)
+    P_longput = long_put(S, K, P_lp)
+    plt.plot(S, P, 'black')
+    plt.plot(S, P1, 'red')
+    plt.plot(S, P_longcall, 'r--')
+    plt.plot(S, P_longput, 'b--')
+    plt.legend(['Straddle Profit', 'Straddle Payoff', 'Long Call', 'Long Put'])
+    plt.title('Straddle')
+    plt.show()
+
+def strangle_plot(S, K_lc, K_lp, P_lc, P_lp):
+    P = strangle(S, K_lc, K_lp, P_lc, P_lp)
+    P1 = strangle_payoff(S, K_lc, K_lp)
+    P_longcall = long_call(S, K_lc, P_lc)
+    P_longput = long_put(S, K_lp, P_lp)
+    plt.figure(figsize = (20, 10))
+    plt.plot(S, P, 'black')
+    plt.plot(S, P1, 'red')
+    plt.plot(S, P_longcall, 'r--')
+    plt.plot(S, P_longput, 'b--')
+    plt.legend(['Strangle Profit', 'Strangle Payoff', 'Long Call', 'Long Put'])
+    plt.title('Strangle')
+    plt.show()
+
+
+strangle_plot(S, 13500, 13400, 198, 140)
