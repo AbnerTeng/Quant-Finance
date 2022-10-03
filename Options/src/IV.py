@@ -43,7 +43,6 @@ def Newton_put_iv(S, K, T, r, p, iv):
     return iv
 
 c_price = [563, 442.5, 400.5, 351.5, 261, 197, 144.5, 98.5, 64, 37.5, 18.75]
-p_price = [93, 123.5, 163, 213.5, 279.5]
 S = 13503
 K = [13000, 13100, 13200, 13300, 13400, 13500, 13600, 13700, 13800, 13900, 14000]
 T1 = 15/252
@@ -86,6 +85,26 @@ print(f"call_implied_vol:", iv_call_t3_df)
 ##iv_put_df = iv_put_df.drop('Strike', axis=1)
 ##print(f"put_implied_vol:", iv_put)
 
+## S+P = C+Ke^(-rT) => P = C+Ke^(-rT)-S
+P_price1 = []
+for i in range(0, len(c_price)):
+    p_price1 = c_price[i]+K[i]*(1+r)**-T1-S
+    P_price1.append(p_price1)
+print(f'put1: \n', P_price1)
+
+P_price2 = []
+for i in range(0, len(c_price)):
+    p_price2 = c_price[i]+K[i]*(1+r)**-T2-S
+    P_price2.append(p_price2)
+print(f'put3: \n', P_price2)
+
+P_price3 = []
+for i in range(0, len(c_price)):
+    p_price3 = c_price[i]+K[i]*(1+r)**-T3-S
+    P_price3.append(p_price3)
+print(f'put3: \n', P_price3)
+    
+
 def graph():
     plt.figure(figsize = (20, 10))
     plt.grid(True)
@@ -99,5 +118,4 @@ def graph():
     plt.show()
 
 graph()
-
 # %%
