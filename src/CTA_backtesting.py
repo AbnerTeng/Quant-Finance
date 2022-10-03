@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 import requests
 import datetime as dt
 import time
-import pandas_ta as pa
 
 path = os.getcwd()
 print(path)
@@ -106,8 +105,8 @@ pd.read_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_funding.csv')
 pd.read_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_funding.csv', parse_dates=True, index_col='time')
 
 # %%
-data = pd.read_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_PERP.csv', parse_dates=True, index_col='startTime')
-funding = pd.read_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_funding.csv', parse_dates=True, index_col='time')
+data = pd.read_csv('/Users/abnerteng/GitHub/Quant-Finance/data/BTC_PERP.csv', parse_dates=True, index_col='startTime')
+##funding = pd.read_csv('/Users/abnerteng/GitHub/TMBA-projects/data/BTC_funding.csv', parse_dates=True, index_col='time')
 # %% [markdown]
 # ## Strategy Backtesting
 # data resample
