@@ -31,51 +31,66 @@ def put_vega(S, K, T, r, sigma):
     return p_vega
 
 def Newton_call_iv(S, K, T, r, c, iv):
-    Max_iter = 100
+    Max_iter = 2000
     for i in range(0, Max_iter):
-        iv -= (call_price(S, K, T, r, iv)-c)/call_vega(S, K, T, r, iv)
+        iv -= (call_price(S, K, T, r, iv)-c)/call_vega(S, K, T, r, iv)*0.001
     return iv
 
 def Newton_put_iv(S, K, T, r, p, iv):
-    Max_iter = 100
+    Max_iter = 2000
     for i in range(0, Max_iter):
-        iv -= (put_price(S, K, T, r, iv)-p)/put_vega(S, K, T, r, iv)
+        iv -= (put_price(S, K, T, r, iv)-p)/put_vega(S, K, T, r, iv)*0.001
     return iv
 
-c_price = [563, 442.5, 400.5, 351.5, 261, 197, 144.5, 98.5, 64, 37.5, 18.75]
-S = 13503
-K = [13000, 13100, 13200, 13300, 13400, 13500, 13600, 13700, 13800, 13900, 14000]
-T1 = 15/252
-T2 = 30/252
-T3 = 60/252
+S = 13801.43
+c_week_price = [283.5, 245.5, 216.5, 180.5, 145.5, 119, 95.5, 73.5, 55.5]
+p_week_price = [69, 80.5, 94.5, 110.5, 132, 155.5, 181, 206, 243]
+c_month_price = [325.5, 258.5, 200.5, 149.5, 110.5]
+p_month_price = [151, 186, 229, 283, 343]
+K_week = [13600, 13650, 13700, 13750, 13800, 13850, 13900, 13950, 14000]
+K_month = [13700, 13800, 13900, 14000, 14100]
+T1 = 7/365
+T2 = 25/365
 r = 0.01
 sigma_init = 0.5
-iv_call_t1 = []
-iv_call_t2 = []
-iv_call_t3 = []
-iv_put = []
+iv_call_week = []
+iv_call_month = []
+iv_put_week = []
+iv_put_month = []
 
-for i in range(0, len(c_price)):
-    iv_call_t1.append(Newton_call_iv(S, K[i], T1, r, c_price[i], sigma_init))
-iv_call_t1_df = pd.merge(pd.DataFrame(K), pd.DataFrame(iv_call_t1), left_index=True, right_index=True)
-iv_call_t1_df.columns = ['Strike', 'IV']
-iv_call_t1_df.index = iv_call_t1_df['Strike']
-iv_call_t1_df = iv_call_t1_df.drop('Strike', axis=1)
-print(f"call_implied_vol:", iv_call_t1_df)
+for i in range(0, len(c_week_price)):
+    iv_call_week.append(Newton_call_iv(S, K_week[i], T1, r, c_week_price[i], sigma_init))
+iv_call_week_df = pd.merge(pd.DataFrame(K_week), pd.DataFrame(iv_call_week), left_index=True, right_index=True)
+iv_call_week_df.columns = ['Strike', 'IV']
+iv_call_week_df.index = iv_call_week_df['Strike']
+iv_call_week_df = iv_call_week_df.drop('Strike', axis=1)
+print(f"call_implied_vol:", iv_call_week_df)
 
-for i in range(0, len(c_price)):
-    iv_call_t2.append(Newton_call_iv(S, K[i], T2, r, c_price[i], sigma_init))
-iv_call_t2_df = pd.DataFrame(iv_call_t2)
-iv_call_t2_df.columns = ["IV"]
-iv_call_t2_df.index = iv_call_t1_df.index
-print(f"call_implied_vol:", iv_call_t2_df)
+for i in range(0, len(p_week_price)):
+    iv_put_week.append(Newton_put_iv(S, K_week[i], T1, r, p_week_price[i], sigma_init))
+iv_put_week_df = pd.merge(pd.DataFrame(K_week), pd.DataFrame(iv_put_week), left_index=True, right_index=True)
+iv_put_week_df.columns = ['Strike', 'IV']
+iv_put_week_df.index = iv_put_week_df['Strike']
+iv_put_week_df = iv_put_week_df.drop('Strike', axis=1)
+print(f"put_implied_vol:", iv_put_week_df)
 
-for i in range(0, len(c_price)):
-    iv_call_t3.append(Newton_call_iv(S, K[i], T3, r, c_price[i], sigma_init))
-iv_call_t3_df = pd.DataFrame(iv_call_t3)
-iv_call_t3_df.columns = ["IV"]
-iv_call_t3_df.index = iv_call_t1_df.index
-print(f"call_implied_vol:", iv_call_t3_df)
+for i in range(0, len(c_month_price)):
+    iv_call_month.append(Newton_call_iv(S, K_month[i], T2, r, c_month_price[i], sigma_init))
+iv_call_month_df = pd.merge(pd.DataFrame(K_month), pd.DataFrame(iv_call_month), left_index=True, right_index=True)
+iv_call_month_df.columns = ['Strike', 'IV']
+iv_call_month_df.index = iv_call_month_df['Strike']
+iv_call_month_df = iv_call_month_df.drop('Strike', axis=1)
+print(f"call_implied_vol:", iv_call_month_df)
+
+for i in range(0, len(p_month_price)):
+    iv_put_month.append(Newton_put_iv(S, K_month[i], T2, r, p_month_price[i], sigma_init))
+iv_put_month_df = pd.merge(pd.DataFrame(K_month), pd.DataFrame(iv_put_month), left_index=True, right_index=True)
+iv_put_month_df.columns = ['Strike', 'IV']
+iv_put_month_df.index = iv_put_month_df['Strike']
+iv_put_month_df = iv_put_month_df.drop('Strike', axis=1)
+print(f"put_implied_vol:", iv_put_month_df)
+
+
 
 ##for i in range(0, len(p_price)):
 ##    iv_put.append(Newton_put_iv(S, K[i], T, r, p_price[i], sigma_init))
@@ -86,36 +101,32 @@ print(f"call_implied_vol:", iv_call_t3_df)
 ##print(f"put_implied_vol:", iv_put)
 
 ## S+P = C+Ke^(-rT) => P = C+Ke^(-rT)-S
-P_price1 = []
-for i in range(0, len(c_price)):
-    p_price1 = c_price[i]+K[i]*(1+r)**-T1-S
-    P_price1.append(p_price1)
-print(f'put1: \n', P_price1)
 
-P_price2 = []
-for i in range(0, len(c_price)):
-    p_price2 = c_price[i]+K[i]*(1+r)**-T2-S
-    P_price2.append(p_price2)
-print(f'put3: \n', P_price2)
 
-P_price3 = []
-for i in range(0, len(c_price)):
-    p_price3 = c_price[i]+K[i]*(1+r)**-T3-S
-    P_price3.append(p_price3)
-print(f'put3: \n', P_price3)
     
 
-def graph():
+def graph_week():
     plt.figure(figsize = (20, 10))
     plt.grid(True)
-    plt.plot(iv_call_t1_df, marker = "o")
-    plt.plot(iv_call_t2_df, marker = "o")
-    plt.plot(iv_call_t3_df, marker = "o")
-    plt.legend(['15 days implied volatility curve', '30 days implied volatility curve', '60 days implied volatility curve'])
-    plt.title('Call Implied Volatility', size = 14)
+    plt.plot(iv_call_week_df, label = 'week call')
+    plt.plot(iv_put_week_df, label = 'week put')
+    plt.legend()
+    plt.title('Call & Put Implied Volatility-Week', size = 14)
     plt.xlabel('Strike')
     plt.ylabel('IV')
     plt.show()
 
-graph()
+def graph_month():
+    plt.figure(figsize = (20, 10))
+    plt.grid(True)
+    plt.plot(iv_call_month_df, label = 'month call')
+    plt.plot(iv_put_month_df, label = 'month put')
+    plt.legend()
+    plt.title('Call & Put Implied Volatility-Month', size = 14)
+    plt.xlabel('Strike')
+    plt.ylabel('IV')
+    plt.show()
+
+graph_week()
+graph_month()
 # %%
