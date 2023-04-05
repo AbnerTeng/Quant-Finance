@@ -1,20 +1,21 @@
 # Quant-Finance
 
-This is my quant-trading projects
+Quantitative trading projects, include CTA (Commodity trading advise) srategy and Statistical arbitrage
 
 ## Basic backtetsing method
 
-* Strategy Backtesting with Pyfolio
-  * SMA Crossover
-* Strategy Backtesting with backtesting and ta-lib
-  * SMA Crossover
+All of the backtesting methods are from technical indicators based on price of stocks
+
+- DMAC (Dual moving average crossover)
+- BBW (Bollinger bands width)
 
 ## CTA trading strategy -- BTC-PERP
 
 * Bollinger Bands Width (BBW) + Dual Moving Average Crossover (DMAC)
 
-## Pairs Trading -- Use Taiwan Stocks as example
+## Pairs Trading -- A Taiwanese stock approach
 
-還沒完成，現在績效超爛，之後熟悉了再改
+## Options pricing methods and simulation
 
-## Options -- 選擇權評價與應用作業
+- Option payoff graph guide for every master student @ NCCU MAB track 111
+- Option payoff graph considering time value
