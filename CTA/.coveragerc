@@ -1,0 +1,10 @@
+[run]
+omit = 
+    # omit all files in this directory
+    data/*
+    docs/*
+    # omit this single file
+
+[report]
+exclude_lines =
+    if __name__ == '__main__':

@@ -1,0 +1,6 @@
+pandas==2.2.1
+numpy==1.25.2
+argparse==1.4.0
+matplotlib==3.7.3
+yfinance==0.2.37
+pyyaml==6.0.1
