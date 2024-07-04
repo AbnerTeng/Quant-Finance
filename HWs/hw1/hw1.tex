@@ -1,0 +1,152 @@
+\documentclass[a4paper, 12pt]{article}
+\usepackage[T1]{fontenc}
+\renewcommand{\familydefault}{\sfdefault}
+\input{preamble/code_preamble}
+\input{preamble/general_preamble}
+\setlength{\headheight}{27.41830pt}
+\sffamily
+\definecolor{sinopia}{rgb}{0.8, 0.25, 0.33}
+\pagestyle{fancy}
+\fancyhf{}
+\chead{
+    TMBA Algorithmic Trading Summer Track HW1 \\
+    25th Mentor, Yu-Chen (Abner) Den, 2024 Summer
+}
+\begin{document}
+\section*{\center{Introduction}}
+Welcome to Algorithmic Trading Club @ TMBA! This is your first
+homework assignment. The purpose of this assignment is to get you
+familiar with the basics of Python for financial data analysis and
+constructing trading strategies. You don't need to write any report / slides
+after finishing this assignment, it's just for you to get familiar with how to
+build a backtest system for single-asset CTA trading strategies.
+
+\subsection*{\center{Instructions}}
+
+In the folder \pythoninline{src/}, you can see four Python files:
+
+\begin{itemize}
+    \item \pythoninline{main.py}
+    \item \pythoninline{utils.py}
+    \item \pythoninline{backtest.py}
+    \item \pythoninline{__init__.py}
+\end{itemize}
+
+\noindent Where \pythoninline{main.py} is the main file for you to execute the
+backtest system. You can run the backtest system by executing the following
+command in the terminal:
+
+\begin{python}
+~/HWs> python -m src.main
+\end{python}
+
+\noindent In \pythoninline{utils.py}, you can find alot of useful functions
+for you to use in the backtest system, such as \pythoninline{load_data()} for
+loading the data, \pythoninline{plot_dd()} for plotting the drawdown of your strategy, etc. In
+\pythoninline{backtest.py}, you can find functions for you to implement trading
+indicators and trading strategies.
+
+\subsection*{\center{Requirements}}
+
+To start programming, you need to install the following packages if you haven't
+done so. I have wrote them into the \pythoninline{requirements.txt} file, you can
+just type the following command in the terminal to install them. A good habit is to
+create a virtual environment before installing the packages to prevent packages version conflicts.
+
+\begin{python}
+~/HWs> python3 -m venv your_venv_name
+~/HWs> source your_venv_name/bin/activate
+
+(your_venv_name) ~/HWs> pip3 install -r requirements.txt
+\end{python}
+
+\noindent After these steps, you are ready to start programming!
+
+\section*{\center{Tasks}}
+
+I have already implemented a simple moving average crossover
+strategy in \pythoninline{backtest.py}. You have two choices to
+complete this assignment:
+
+\begin{itemize}
+    \item \textbf{Not familiar with Python and CLI \footnote{Command Line Interface}:}
+        You can first understand the code and the backtest structure, and then try
+        to run the code in your local environment successfully.
+    \item \textbf{Familiar with Python and CLI:}
+        You can try to implement a ``Moving Average Crossover'' strategy based on
+        the current structure (Or other trading strategies if you want to do so).
+\end{itemize}
+
+\section*{\center{Hints}}
+
+\subsection*{\center{Moving Average Crossover}}
+
+To implement the moving average crossover strategy, you need to
+first calculate one more moving average line, be aware that two
+moving average lines need to have different periods (different \pythoninline{k}).
+
+\begin{python}
+get_moving_average(data, args.k1)
+get_moving_average(data, args.k2)
+\end{python}
+
+\noindent To generate the trading signals, you can refer to the following links:
+\begin{itemize}
+    \item \url{https://trendspider.com/learning-center/moving-average-crossover-strategies/}
+    \item \url{https://www.oanda.com/bvi-ft/lab-education/dictionary/golden-cross_death-cross/}
+\end{itemize}
+
+\subsection*{\center{CLI Execution}}
+
+Type the following command in the terminal to run the backtest system:
+
+\begin{python}
+~/HWs> python -m src.main --k1 10 --k2 20
+\end{python}
+
+\subsection*{\center{Supplementary Materials -- \pythoninline{ArgumentParser}}}
+\pythoninline{ArgumentParser} is a class in the \pythoninline{argparse} module
+that allows you to parse command-line arguments. You can use it to add arguments
+to your script, and then parse them. Here is an example of how to use it:
+
+\begin{python}
+"""
+-*- encoding: utf-8 -*-
+main.py
+
+Make sure to first `pip install argparse`
+"""
+from argparse import ArgumentParser
+
+def parse_args():
+    parser = ArgumentParser()
+    parser.add_argument("--k", type=int)
+    return parser.parse_args()
+
+if __name__ == "__main__":
+    args = parse_args()
+    print(args.k)
+\end{python}
+
+And you can run the script with the following command:
+
+\begin{python}
+~/HWs> python main.py --k 10
+\end{python}
+
+it will print out \pythoninline{10}.
+
+\section*{\center{Want to know more?}}
+
+\begin{itemize}
+    \item The source code of this homework \& the full version of the
+    backtest system can be found in my \href[]{https://github.com/AbnerTeng/Quant-Finance/tree/master}{GitHub repo -- Quant-Finance}
+    \item \href[]{https://abnerteng.notion.site/Coding-Style-Manual-bab7b862daec4057bd6d3e5b68aa3721?pvs=4}{Coding Style Manual} wrote by myself.
+    A good coding style can make you easier to find a job in quantitative trading industry / tech companies.
+    \item \href[]{https://abnerteng.github.io/post/kronos_interview/}{Interview experience of Kronos Summer Analyst}. If you're interested in
+    what the interview process of a quant trading firm looks like, you can check this out.
+\end{itemize}
+
+\noindent Any questions, feel free to ask me on Discord / Facebook. 
+
+\end{document}

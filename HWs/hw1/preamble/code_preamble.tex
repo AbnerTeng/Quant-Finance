@@ -1,0 +1,125 @@
+% ! TEX TS-program = xelatex
+% ! TEX encoding = UTF-8 Unicode
+
+%%========== Main packages ========== %%
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{color}
+\usepackage{xcolor}
+
+%%========== Colors ===========%%
+\definecolor{deepblue}{rgb}{0,0,0.5}
+\definecolor{deepred}{rgb}{0.6,0,0}
+\definecolor{deepgreen}{rgb}{0,0.5,0}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+
+%%========== Beamer packages and Settings ========== %%
+%% \usepackage{bm}
+%% \setbeamercolor{footnote mark}{fg=red}
+%% \usetheme{CambridgeUS}
+%% \setbeamerfont{footnote}{size=\tiny}
+%% \setbeamertemplate{footline}[frame number]
+
+%%========== Listings Settings ========== %%
+\newcommand\pythonstyle
+{\lstset
+    {
+        frame=tb,
+        language=Python,
+        aboveskip=5mm,
+        belowskip=5mm,
+        backgroundcolor=\color{backcolour},
+        morekeywords={self},
+        keywordstyle=\bfseries\color{deepblue},
+        identifierstyle=\ttfamily\color{blue},
+        emph={class,__init__,def},
+        emphstyle=\ttfamily\color{deepred},
+        stringstyle=\color{deepgreen},
+        commentstyle=\itshape\color{codegreen},
+        basicstyle=\ttfamily,
+        breakatwhitespace=true,
+        breaklines=true,
+        keepspaces=true,
+        numbers=none,
+        showspaces=false,
+        showstringspaces=false,
+        showtabs=false,
+        tabsize=4,
+    }
+}
+
+\newcommand\cppstyle
+{\lstset
+    {
+        language=C++,
+        backgroundcolor=\color{backcolour},
+        morekeywords={include, using, namespace, std, cout, cin, endl},
+        keywordstyle=\ttfamily\color{deepblue},
+        emph={class, public, private, protected, int, float, double, char, string, bool, void, return, if, else, for, while, do, switch, case, break, continue, default, true, false},
+        emphstyle=\ttfamily\color{deepred},
+        stringstyle=\color{deepgreen},
+        commentstyle=\color{codegreen},
+        basicstyle=\ttfamily\footnotesize,
+        breakatwhitespace=false,
+        breaklines=true,
+        keepspaces=true,
+        numbers=none,
+        showspaces=false,
+        showstringspaces=false,
+        showtabs=false,
+        tabsize=4,
+    }
+}
+
+\newcommand\bashstyle
+{\lstset
+    {
+        frame=tb,
+        language=bash,
+        backgroundcolor=\color{backcolour},
+        morekeywords={include, using, namespace, std, cout, cin, endl},
+        keywordstyle=\ttfamily\color{deepblue},
+        emph={class, public, private, protected, int, float, double, char, string, bool, void, return, if, else, for, while, do, switch, case, break, continue, default, true, false},
+        emphstyle=\ttfamily\color{deepred},
+        stringstyle=\color{deepgreen},
+        commentstyle=\color{codegreen},
+        basicstyle=\ttfamily\footnotesize,
+        breakatwhitespace=false,
+        breaklines=true,
+        keepspaces=true,
+        numbers=none,
+        showspaces=false,
+        showstringspaces=false,
+        showtabs=false,
+        tabsize=4,
+    }
+}
+
+\lstnewenvironment{python}[1][]
+    {
+    \pythonstyle
+    \lstset{#1}
+    }
+{}
+
+\lstnewenvironment{bash}[1][]
+    {
+    \bashstyle
+    \lstset{#1}
+    }
+{}
+
+\lstnewenvironment{cpp}[1][]
+{
+\cppstyle
+\lstset{#1}
+}
+{}
+
+\newcommand\pythoninline[1]{{\pythonstyle\lstinline!#1!}}
+\newcommand\cppinline[1]{{\cppstyle\lstinline!#1!}}
+\newcommand\bashinline[1]{{\bashstyle\lstinline!#1!}}

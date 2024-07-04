@@ -1,0 +1,73 @@
+%% ========== Geometry Settings ==========
+\usepackage{fancyhdr}
+\usepackage{geometry}
+\geometry{top = 2cm, bottom = 2cm, right = 2cm, left = 2cm}
+\usepackage{appendix}
+\usepackage{setspace}
+
+%% ========== Figure Settings ==========
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+
+%% ========== Table Settings ==========
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{dcolumn}
+\usepackage{ctable}
+%% ========== Math Settings ==========
+\usepackage{amsmath, mathtools, amssymb, empheq, amsthm, cancel, mleftright} % 
+\DeclareMathOperator{\erf}{erf}
+\DeclareMathOperator{\arcsec}{arcsec}
+\DeclareMathOperator{\arccot}{arccot}
+\DeclareMathOperator{\arccsc}{arccsc}
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\renewcommand\qedsymbol{$\blacksquare$}
+\allowdisplaybreaks
+\newcommand{\ddx}{\frac{d}{dx}}
+\newcommand{\dfdx}{\frac{df}{dx}}
+\newcommand{\ddxp}[1]{\frac{d}{dx}\left(#1 \right)}
+\newcommand{\dydx}{\frac{dy}{dx}}
+\let\ds\displaystyle
+\newcommand{\intx}[1]{\int #1 \, dx}
+\newcommand{\intt}[1]{\int #1 \, dt}
+\newcommand{\imp}{\Rightarrow}
+\newcommand{\un}{\cup}
+\newcommand{\inter}{\cap}
+\newcommand{\ps}{\mathscr{P}}
+\newcommand{\set}[1]{\left\{ #1 \right\}}
+
+%% ========== TIKZ Settings ==========
+\usepackage{tikz}
+\usepackage{standalone}
+\tikzset{>=latex} % for LaTeX arrow head
+\usepackage{pgfplots} % for the axis environment
+\usepackage{xcolor}
+\usepackage[outline]{contour} % halo around text
+\contourlength{1.2pt}
+\usetikzlibrary{positioning,calc}
+\usetikzlibrary{backgrounds}% required for 'inner frame sep'
+\pgfplotsset{compat = 1.18}
+
+%% ========== Reference Settings ==========
+\usepackage{hyperref} % Set some hyperref style
+\hypersetup{
+    colorlinks = true,
+    linkcolor = blue,
+    filecolor = magenta,      
+    urlcolor = sinopia,
+    citecolor = blue,
+}
+\usepackage{natbib}
+\usepackage{nccbbb}
+\urlstyle{same}
+
+%% ========== Algorithm ============
+\usepackage[ruled]{algorithm2e}
+
+%% ========== Font Settings ==========
+\sffamily % sans serif font
