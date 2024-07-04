@@ -1,21 +1,42 @@
 # Quant-Finance
 
-Quantitative trading projects, include CTA (Commodity trading advise) srategy and Statistical arbitrage
+Qunatitative Trading Space
 
-## Basic backtetsing method
+> **Note**: This repo is also for all my mentees in the department of Algorithm Trading, TMBA.
 
-All of the backtesting methods are from technical indicators based on price of stocks
+Author:
 
-- DMAC (Dual moving average crossover)
-- BBW (Bollinger bands width)
+- Yu-Chen (Abner) Den
 
-## CTA trading strategy -- BTC-PERP
+## Folders
 
-* Bollinger Bands Width (BBW) + Dual Moving Average Crossover (DMAC)
+### CTA (Ongoing)
 
-## Pairs Trading -- A Taiwanese stock approach
+Single asset CTA trading strategy and backtesting system, including various data collection APIs.
 
-## Options pricing methods and simulation
+### HWs
 
-- Option payoff graph guide for every master student @ NCCU MAB track 111
-- Option payoff graph considering time value
+Homeworks for my mentees @ TMBA.
+
+### Machine Learning (Not started)
+
+Will cover some research and practical implementation based on my interest in empirical asset pricing with machine learning methods.
+
+### Options
+
+Untidy folder full of options payoff diagrams and strategies. (I don't want to clean it up.)
+
+## Start
+
+First create a virtual environment and activate it.
+
+```plaintext
+python3 -m venv your_venv
+source your_venv/bin/activate
+```
+
+Then install the required packages.
+
+```plaintext
+pip3 install -r requirements.txt
+```
