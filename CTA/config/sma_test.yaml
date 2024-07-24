@@ -1,8 +1,8 @@
 DataAPIYahoo:
     source: yahoo
-    comp: AAPL 
+    comp: 0050.TW 
     start: 2020-01-01
-    end: 2022-01-01
+    end: 2023-01-01
     scale: 1d
 
 DataAPITAIFEX:
@@ -13,8 +13,10 @@ DataAPITAIFEX:
     scale:
 
 Strat:
-    strat_type: singlema
+    strat_type: doublema
     initial_cap: 10000
-    trans_cost: 0.001
-    k1: 10
-    k2:
+    trans_cost: 0.000
+    k1: 13
+    k2: 12
+    sl_thres: -0.02
+    sp_thres: 0.10

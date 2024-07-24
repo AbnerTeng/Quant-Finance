@@ -24,7 +24,7 @@ class BackTest:
         self.cap = initial_cap
         self.fee = trans_cost
         self.trade_log = {
-            "buy": [],
+            "long": [],
             "sell": [],
             "buytocover": [],
             "short": [],

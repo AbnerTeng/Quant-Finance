@@ -43,7 +43,7 @@ class DataAPI:
             data = (
                 get_yahoo(self.comp, self.start, self.end, self.scale)
                 if self.source == "yahoo"
-                else get_taifex(self.start, self.end, market_code=0)
+                else get_taifex(self.start, self.end)
             )
 
         elif self.source == "binance":

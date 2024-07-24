@@ -1,6 +1,7 @@
 """
 All about plots
 """
+from typing import Dict, List
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -20,8 +21,8 @@ def profit_graph(equity: pd.DataFrame) -> None:
         grid=True
     )
     plt.fill_between(
-        equity["drawdown"].index,
-        equity["drawdown"],
+        equity["dd"].index,
+        equity["dd"],
         0,
         facecolor="red",
         label="Drawdown",
@@ -39,7 +40,11 @@ def profit_graph(equity: pd.DataFrame) -> None:
     plt.title("Profit & Drawdown", fontsize=15)
     plt.show()
 
-def trade_position(df: pd.DataFrame) -> None:
+def trade_position(
+    df: pd.DataFrame,
+    indicators: List[pd.Series],
+    log: Dict[str, List[int]]
+) -> None:
     """
     df: trade_log dataframe
     """
@@ -51,12 +56,22 @@ def trade_position(df: pd.DataFrame) -> None:
         grid=True,
         alpha=0.8
     )
-    for signal in df.columns:
-        color = "orangered" if signal in ["buy", "sell"] else "limegreen"
-        marker = "^" if signal in ["buy", "buytocover"] else "v"
+
+    for indicator in indicators:
+        indicator.plot(
+            label="Indicator",
+            ax=ax,
+            color="blue",
+            grid=True,
+            alpha=0.8
+        )
+
+    for signal in log.keys():
+        color = "orangered" if signal in ["long", "sell"] else "limegreen"
+        marker = "^" if signal in ["long", "buytocover"] else "v"
         plt.scatter(
-            df['close'].iloc[signal].index,
-            df['close'].iloc[signal],
+            df['close'].iloc[log[signal]].index,
+            df['close'].iloc[log[signal]],
             color=color,
             label=signal,
             marker=marker,
