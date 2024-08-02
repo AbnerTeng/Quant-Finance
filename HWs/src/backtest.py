@@ -8,6 +8,7 @@ import numpy as np
 CAPITAL = 1000000
 FEE = 0.001425
 
+
 def get_moving_average(data: pd.DataFrame, k: int) -> None:
     """
     Get k-day moving average line
@@ -16,6 +17,7 @@ def get_moving_average(data: pd.DataFrame, k: int) -> None:
         k = int(k)
 
     data[f"MA_{k}"] = data["Close"].rolling(window=k).mean()
+
 
 def strategy(
     data: pd.DataFrame,
@@ -54,7 +56,9 @@ def strategy(
                 signal_map["short"].append(t)
 
         elif curr_cond == "buy":
-            profit = execute_size * (data["Open"].iloc[i+1] - data["Open"].iloc[i])
+            profit = execute_size * (
+                data["Open"].iloc[i+1] - data["Open"].iloc[i]
+            )
             profit_map["profit"].append(profit)
 
             if data["Close"].iloc[i] < data[f"MA_{k}"].iloc[i]:
@@ -71,7 +75,9 @@ def strategy(
                 profit_map["profitwithfee"].append(profitwithfee)
 
         elif curr_cond == "short":
-            profit = execute_size * (data["Open"].iloc[i] - data["Open"].iloc[i+1])
+            profit = execute_size * (
+                data["Open"].iloc[i] - data["Open"].iloc[i+1]
+            )
             profit_map["profit"].append(profit)
 
             if data["Close"].iloc[i] > data[f"MA_{k}"].iloc[i]:
@@ -89,6 +95,7 @@ def strategy(
 
     return signal_map, profit_map
 
+
 def cal_equity(
     profit_map: Dict[str, List[float]],
     data: pd.DataFrame
@@ -105,8 +112,11 @@ def cal_equity(
     )
     equity["equity_val"] = CAPITAL + equity["profitwithfee"]
     equity["drawdown"] = equity["equity_val"] - equity["equity_val"].cummax()
-    equity["drawdown%"] = (equity["equity_val"] / equity["equity_val"].cummax()) - 1
+    equity["drawdown%"] = (
+        equity["equity_val"] / equity["equity_val"].cummax()
+    ) - 1
     return equity
+
 
 def get_ret(equity_df: pd.DataFrame) -> List[float]:
     """
@@ -125,7 +135,7 @@ def get_ret(equity_df: pd.DataFrame) -> List[float]:
             ret.append(0)
         else:
             ret.append(
-                (val - equity_df["equity_val"].iloc[idx-1]) \
+                (val - equity_df["equity_val"].iloc[idx-1])
                 / equity_df["equity_val"].iloc[idx-1]
             )
 

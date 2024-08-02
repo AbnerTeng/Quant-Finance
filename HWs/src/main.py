@@ -41,7 +41,7 @@ def parse_args() -> ArgumentParser:
 if __name__ == "__main__":
     args = parse_args()
     if args.ticker:
-        data = yf.download(args.ticker, start="2020-01-01", end="2020-12-31")
+        data = yf.download(args.ticker, start="2021-01-01", end="2023-12-31")
     else:
         data = load_data("data/AAPL.csv")
 

@@ -7,11 +7,12 @@ SCALE_MAP = {
     "monthly": 12
 }
 
+
 def sharpe_ratio(
     returns: List[Union[int, float]],
     rf: Union[List, float],
     ret_scale: str,
-    annual: bool=False
+    annual: bool = False
 ) -> float:
     """
     Calculate the sharpe ratio of a given return series

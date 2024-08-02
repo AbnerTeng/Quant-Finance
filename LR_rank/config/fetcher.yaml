@@ -1,0 +1,8 @@
+DataAPIYahoo:
+    source: yahoo
+    comp: [AAPL, AMZN, GOOGL, MSFT, TSLA, NVDA, PYPL, ADBE, NFLX, MMM, AOS, ABT, ABBV, BLK, BA, CSCO, CME] 
+    start: 2001-01-01
+    end: 2024-01-01
+    scale: 1mo
+
+DataDest: LR_rank/data/usmo.csv

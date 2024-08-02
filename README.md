@@ -14,6 +14,15 @@ Author:
 
 Single asset CTA trading strategy and backtesting system, including various data collection APIs.
 
+$$ Usage: $$
+
+- Change the `config/sma_test.yaml` file to your own settings (including API keys).
+- Run the `main.py` file.
+
+```plaintext
+python3 -m src.main
+```
+
 ### HWs
 
 Homeworks for my mentees @ TMBA.

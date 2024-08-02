@@ -1,0 +1,10 @@
+thres: "2015-01-01"
+rank_method: quantile
+xgbrg:
+  random_state: 42
+
+xgbrk:
+  tree_method: hist
+  booster: gbtree
+  objective: rank:ndcg
+  random_state: 42

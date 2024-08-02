@@ -9,22 +9,25 @@ import matplotlib.pyplot as plt
 
 RISK_FREE = 0.02 # not in %
 
-def load_data(path: str) -> Union[pd.DataFrame, Dict]:
+
+def load_data(path: str) -> Union[pd.DataFrame, Dict] | None:
     """
     Load different types of data
     Can manually add more types of data
-    
+
     path: (str) path to the data
     """
     suffix = path.split('.')[-1]
 
     if suffix == "csv":
         return pd.read_csv(path, encoding="utf-8")
-    elif suffix == "yaml":
-        with open(path, 'r', encoding="utf-8") as f:
-            return yaml.safe_load(f)
 
-    raise ValueError(f"Unknown file type: {suffix}")
+    if suffix == "yaml":
+        with open(path, 'r', encoding="utf-8") as yaml_file:
+            return yaml.safe_load(yaml_file)
+
+        raise ValueError(f"Unknown file type: {suffix}")
+
 
 def plot_dd(equity: pd.DataFrame) -> None:
     """
@@ -59,6 +62,7 @@ def plot_dd(equity: pd.DataFrame) -> None:
     plt.ylabel("Accumulated Profit")
     plt.title("Profit & Drawdown", fontsize=15)
     plt.show()
+
 
 def plot_trade_position(
     df: pd.DataFrame,
@@ -104,6 +108,7 @@ def plot_trade_position(
     plt.title("Trade Position", fontsize=15)
     plt.show()
 
+
 def sharpe(ret: List[float]) -> float:
     """
     Calculate Sharpe ratio
@@ -117,18 +122,19 @@ def sharpe(ret: List[float]) -> float:
     ret = np.array(ret)
     return (ret.mean() / ret.std()) * np.sqrt(252)
 
+
 def metrics(
     equity: pd.DataFrame,
     ret: List[float]
 ) -> Dict[str, Union[float, str]]:
     """
     Calculate performance metrics
-    
+
     Input:
         equity: (pd.DataFrame) equity curve data
         ret: (List[float]) daily return
 
-    Output: 
+    Output:
         metrics_map: (Dict[str, Union[str, float]]) performance metrics
     """
     metrics_map = {}
