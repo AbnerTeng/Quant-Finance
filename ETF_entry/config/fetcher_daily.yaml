@@ -1,0 +1,8 @@
+DataAPIYahoo:
+    source: yahoo
+    comp: [0050.TW] 
+    start: 2004-01-01
+    end: 2024-07-01
+    scale: 1d
+
+DataDest: ETF_entry/data/etf_day.csv

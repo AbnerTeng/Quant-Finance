@@ -4,7 +4,7 @@ from CTA.src.utils.data_utils import (
     transfer_colnames
 )
 
-# Path: LR_rank/config/test.yaml
+# Path: ETF_entry/config/test.yaml
 
 if __name__ == '__main__':
     cfg = get_self("LR_rank/config/fetcher.yaml")

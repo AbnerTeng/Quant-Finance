@@ -49,6 +49,12 @@ def transfer_colnames(data: Any) -> Any:
 
     return data
 
+def filter_novol(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    filter out rows with no volume
+    """
+    return data[data["volume"] > 0]
+
 def get_yahoo(
     stock_id: List[str],
     start: str,
