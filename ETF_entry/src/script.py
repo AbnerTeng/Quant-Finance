@@ -1,12 +1,18 @@
+"""
+Line notify source code
+"""
 import json
 import requests
 
-class ETF_entry():
+
+URL = "https://notify-api.line.me/api/notify"
+
+class ETFEntry:
     """
     This class is used for send LINE notify message.
     """
 
-    def __init__(self, user_list_path="userlist.json") -> None:
+    def __init__(self, user_list_path: str = "userlist.json") -> None:
         with open(user_list_path, "r", encoding="utf-8") as f:
             self.users = json.loads(f.read())
             f.close()
@@ -19,14 +25,18 @@ class ETF_entry():
         """
         api_key = self.users[name]
 
-        url = 'https://notify-api.line.me/api/notify'
         headers = {
             'Authorization': 'Bearer ' + api_key
         }
         data = {
             'message': msg
         }
-        requests.post(url, headers=headers, data=data)
+        requests.post(
+            URL,
+            headers=headers,
+            data=data,
+            timeout=10
+        )
 
     def send_all(self, msg: str) -> None:
         """
