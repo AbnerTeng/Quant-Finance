@@ -7,6 +7,7 @@ Qunatitative Trading Space
 Author:
 
 - Yu-Chen (Abner) Den
+- Tzu-Hao (Howard) Liu
 
 ## Folders
 
@@ -23,13 +24,17 @@ $$ Usage: $$
 python3 -m src.main
 ```
 
+### BetterRSP / ETF\_entry (Ongoing)
+
+A better RSP strategy for ETFs that utilize machine learning models to predict the confidence score of next-month entry point
+
 ### HWs
 
 Homeworks for my mentees @ TMBA.
 
-### Machine Learning (Not started)
+### Learning to Rank on Portfolio Construction (LR\_rank)
 
-Will cover some research and practical implementation based on my interest in empirical asset pricing with machine learning methods.
+Instead of classifying portfolio return into 10 independent classes, we rank those returns because we want the relationships between them. 
 
 ### Options
 
