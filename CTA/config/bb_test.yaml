@@ -13,10 +13,9 @@ DataAPITAIFEX:
     scale:
 
 Strat:
-    strat_type: doublema
+    strat_type: reverse
     initial_cap: 10000
     trans_cost: 0.000
-    k1: 13
-    k2: 12
+    k1: 20
     sl_thres: -0.02
     sp_thres: 0.10

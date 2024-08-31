@@ -1,4 +1,6 @@
 from typing import List, Union
+import re
+import ast
 import numpy as np
 
 SCALE_MAP = {
@@ -40,3 +42,15 @@ def sortino_ratio(returns: List[Union[int, float]], rf: Union[List, float]):
     Calculate the sortino ratio of a given return series
     """
     raise NotImplementedError
+
+
+def parse_column(col):
+    match = re.match(r'(\w+)\s*\((.*?)\)', col)
+    if not match:
+        return [col]
+
+    ind, params_str = match.groups()
+    params = ast.literal_eval(f"({params_str})")
+    params = [params] if isinstance(params, int) else list(params)
+
+    return [f"{ind}_{param}" for param in params]

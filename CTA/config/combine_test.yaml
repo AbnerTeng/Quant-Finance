@@ -12,11 +12,11 @@ DataAPITAIFEX:
     end: 2021-01-02
     scale:
 
-Strat:
-    strat_type: doublema
+
+Strat: [BB(20, True), SMA(5)]
+
+Settings:
     initial_cap: 10000
-    trans_cost: 0.000
-    k1: 13
-    k2: 12
+    trans_cost: 0.001
     sl_thres: -0.02
     sp_thres: 0.10
