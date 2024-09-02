@@ -15,9 +15,28 @@ Author:
 
 Single asset CTA trading strategy and backtesting system, including various data collection APIs.
 
-$$ Usage: $$
+*Full documentation can be found in the `CTA/docs` folder*
 
-- Change the `config/sma_test.yaml` file to your own settings (including API keys).
+**Usage:**
+
+- Create environment
+  - venv
+
+    ```plaintext
+    python3 -m venv your_venv
+    source your_venv/bin/activate
+
+    pip3 install -r requirements.txt
+    ```
+
+  - Docker (On-going)
+
+    ```plaintext
+    docker build -t nlcta .
+    docker run -it nlcta
+    ```
+
+- Change the `config/combine_test.yaml` file to your own settings (including API keys).
 - Run the `main.py` file.
 
 ```plaintext
