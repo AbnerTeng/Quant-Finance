@@ -57,18 +57,21 @@ def parse_args() -> ArgumentParser:
     parser.add_argument(
         "--config_type", "-ctp", type=str, default="yahoo"
     )
+    parser.add_argument(
+        '--plot', '-p', action='store_true'
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
-    args = parse_args()
-    cfg = get_self(args.config_path)
+    p_args = parse_args()
+    cfg = get_self(p_args.config_path)
 
-    if args.config_type == "yahoo":
+    if p_args.config_type == "yahoo":
         fetcher = DataAPI(**cfg["DataAPIYahoo"])
         data = fetcher.fetch()
 
-    elif args.config_type == "taifex":
+    elif p_args.config_type == "taifex":
         fetcher = DataAPI(**cfg["DataAPITAIFEX"])
         date_list = pd.date_range(
             cfg["DataAPITAIFEX"]["start"],
@@ -86,13 +89,16 @@ if __name__ == "__main__":
 
     df = transfer_colnames(data)
     GlobalDataManager.set_data(df)
-    comb = Combination(BB(20, True), SMA(5))
-    big_df = comb.run_combination()
+    comb = Combination(*[eval(item) for item in cfg['Strat']])
+    big_df = comb.run_combination().dropna()
     combine_strat = CombineStrategy(
         big_df,
         comb.indicators,
         comb.cleaned_columns
     )
-    runner = RunStrategy(big_df, combine_strat, cfg["Settings"])
+    runner = RunStrategy(big_df, combine_strat, **cfg["Settings"])
     eqdf = runner.run()
-    profit_graph(eqdf)
+    print(eqdf.tail())
+
+    if p_args.plot:
+        profit_graph(eqdf)

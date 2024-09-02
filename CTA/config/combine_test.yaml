@@ -1,22 +1,23 @@
 DataAPIYahoo:
-    source: yahoo
-    comp: ^SPX 
-    start: 2010-01-01
-    end: 2024-08-01
-    scale: 1d
-
+  source: yahoo
+  comp: ^SPX
+  start: 2010-01-01
+  end: 2024-08-01
+  scale: 1d
 DataAPITAIFEX:
-    source: taifex
-    comp:
-    start: 2020-01-02
-    end: 2021-01-02
-    scale:
-
-
-Strat: [BB(20, True), SMA(5)]
-
+  source: taifex
+  comp:
+  start: 2020-01-02
+  end: 2021-01-02
+  scale:
+Strat:
+  - MACD(12, 26, 9)
+  - SMA(10)
+  - SMA(10, 20)
+  - RSI(14)
+  - BB(20, True)
 Settings:
-    initial_cap: 10000
-    trans_cost: 0.001
-    sl_thres: -0.02
-    sp_thres: 0.10
+  initial_cap: 10000
+  trans_cost: 0.001
+  sl_thres:
+  sp_thres: 0.02

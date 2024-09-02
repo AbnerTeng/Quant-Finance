@@ -1,4 +1,5 @@
 from typing import List
+import numpy as np
 import pandas as pd
 from .backtest import BackTest
 from .utils.logic_utils import (
@@ -144,21 +145,21 @@ class RunStrategy(BackTest):
         combine_strat: CombineStrategy,
         initial_cap: float = 10000,
         trans_cost: float = 0.001,
-        sl_thres: float = None,
-        sp_thres: float = None,
+        sl_thres: float | None = -np.inf,
+        sp_thres: float | None = np.inf,
     ) -> None:
         super().__init__(data, initial_cap, trans_cost)
         self.data = data
         self.combine_strat = combine_strat
         self.cap = initial_cap
         self.cost = trans_cost
-        self.sl_thres = sl_thres
-        self.sp_thres = sp_thres
+        self.sl_thres = sl_thres if sl_thres is not None else -np.inf
+        self.sp_thres = sp_thres if sp_thres is not None else np.inf
 
     def run(self) -> pd.DataFrame:
         curr_cond = None
 
-        for idx in range(len(self.data)):
+        for idx in range(len(self.data) - 1):
             logics = self.combine_strat.get_strategy(idx)
 
             if curr_cond is None:
@@ -167,6 +168,8 @@ class RunStrategy(BackTest):
                 curr_ret = 0
 
                 if all(logics["long"]):
+                    print(idx)
+                    print(len(self.data))
                     execute_size = self.cap / self.data["open"].iloc[idx+1]
                     curr_cond = "long"
                     t = idx + 1
