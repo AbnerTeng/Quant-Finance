@@ -1,3 +1,4 @@
+import os
 from multiprocessing import Pool
 from argparse import ArgumentParser
 import pandas as pd
@@ -6,7 +7,7 @@ from .indicators.rsi import RSI
 from .indicators.bb import BB
 from .strategy import (
     CombineStrategy,
-    RunStrategy
+    RunStrategy,
 )
 from .utils.general_utils import parse_column
 from .utils.data_utils import (
@@ -15,7 +16,7 @@ from .utils.data_utils import (
     transfer_colnames
 )
 from .get_data import DataAPI
-from .utils.plot import profit_graph, trade_position
+from .utils.plot import profit_graph
 from .base.base_indicator import BaseIndicator, GlobalDataManager
 
 
@@ -38,8 +39,8 @@ class Combination:
         full_df = pd.DataFrame()
 
         for strat in self.indicators:
-            data = strat.build()
-            full_df = pd.concat([full_df, data], axis=1)
+            strat_data = strat.build()
+            full_df = pd.concat([full_df, strat_data], axis=1)
 
         full_df = full_df.loc[:, ~full_df.columns.duplicated()]
 
@@ -58,6 +59,9 @@ def parse_args() -> ArgumentParser:
         "--config_type", "-ctp", type=str, default="yahoo"
     )
     parser.add_argument(
+        "--df_path", "-dp", type=str, default="data/strat_df.csv"
+    )
+    parser.add_argument(
         '--plot', '-p', action='store_true'
     )
     return parser.parse_args()
@@ -66,6 +70,11 @@ def parse_args() -> ArgumentParser:
 if __name__ == "__main__":
     p_args = parse_args()
     cfg = get_self(p_args.config_path)
+
+    if os.path.exists(p_args.df_path):
+        strat_df = pd.read_csv(p_args.df_path, index_col=0)
+    else:
+        strat_df = pd.DataFrame()
 
     if p_args.config_type == "yahoo":
         fetcher = DataAPI(**cfg["DataAPIYahoo"])
@@ -99,6 +108,21 @@ if __name__ == "__main__":
     runner = RunStrategy(big_df, combine_strat, **cfg["Settings"])
     eqdf = runner.run()
     print(eqdf.tail())
+
+    full_strat = ""
+
+    for strt in cfg["Strat"]:
+        full_strat += strt + "_"
+
+    eqdf["strats"] = full_strat
+
+    if strat_df.empty:
+        strat_df = pd.concat([strat_df, eqdf], axis=0)
+    else:
+        if eqdf["strats"].values[0] not in strat_df["strats"].values:
+            strat_df = pd.concat([strat_df, eqdf], axis=0)
+
+    strat_df.to_csv(p_args.df_path)
 
     if p_args.plot:
         profit_graph(eqdf)

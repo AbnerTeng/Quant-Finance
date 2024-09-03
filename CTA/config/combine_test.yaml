@@ -11,13 +11,9 @@ DataAPITAIFEX:
   end: 2021-01-02
   scale:
 Strat:
-  - MACD(12, 26, 9)
   - SMA(10)
-  - SMA(10, 20)
-  - RSI(14)
-  - BB(20, True)
 Settings:
   initial_cap: 10000
   trans_cost: 0.001
-  sl_thres:
-  sp_thres: 0.02
+  sl_thres: -0.10
+  sp_thres: 0.07

@@ -1,12 +1,10 @@
-from typing import List
+from typing import List, Tuple
 import numpy as np
 import pandas as pd
-from .backtest import BackTest
+from .base.base_strategy import BackTest
 from .utils.logic_utils import (
     crossover,
     crossdown,
-    stop_loss,
-    stop_profit
 )
 from .base.base_indicator import BaseIndicator
 
@@ -16,10 +14,10 @@ class CombineStrategy:
     Combined strategy class
     """
     def __init__(
-        self,
-        data: pd.DataFrame,
-        indicators_class: BaseIndicator,
-        indicators_str: List[str],
+            self,
+            data: pd.DataFrame,
+            indicators_class: BaseIndicator,
+            indicators_str: List[str],
     ) -> None:
         self.data = data
         self.indicators_class = indicators_class
@@ -145,8 +143,57 @@ class RunStrategy(BackTest):
         combine_strat: CombineStrategy,
         initial_cap: float = 10000,
         trans_cost: float = 0.001,
-        sl_thres: float | None = -np.inf,
-        sp_thres: float | None = np.inf,
+        sl_thres: float | None = None,
+        sp_thres: float | None = None,
+    ) -> None:
+        super().__init__(data, initial_cap, trans_cost, sl_thres, sp_thres)
+        self.data = data
+        self.combine_strat = combine_strat
+
+    def run(
+            self,
+            start_idx: int | None = None,
+            last_idx: int | None = None
+    ) -> pd.DataFrame:
+        """
+        Run rolling strategy
+        """
+        curr_cond = None
+        execute_size = 0
+        t = 0
+        curr_ret = 0
+
+        if start_idx is None:
+            start_idx = 0
+
+        if last_idx is None:
+            last_idx = len(self.data) - 1
+
+        for idx in range(start_idx, last_idx, 1):
+            logics = self.combine_strat.get_strategy(idx)
+            curr_cond, execute_size, t, curr_ret = self.daily_run(
+                idx, curr_cond, logics, execute_size, t, curr_ret
+            )
+
+            for key in logics.keys():
+                logics[key] = []
+
+        equity_df = self.calculate_equity()
+        return equity_df
+
+
+class RunRollingStrategy(BackTest):
+    """
+    Rolling strategy class
+    """
+    def __init__(
+            self,
+            data: pd.DataFrame,
+            combine_strat: CombineStrategy,
+            initial_cap: float = 10000,
+            trans_cost: float = 0.001,
+            sl_thres: float | None = -np.inf,
+            sp_thres: float | None = np.inf,
     ) -> None:
         super().__init__(data, initial_cap, trans_cost)
         self.data = data
@@ -156,77 +203,67 @@ class RunStrategy(BackTest):
         self.sl_thres = sl_thres if sl_thres is not None else -np.inf
         self.sp_thres = sp_thres if sp_thres is not None else np.inf
 
-    def run(self) -> pd.DataFrame:
+    def day_of_year_idx(self) -> Tuple[List[int], List[int]]:
+        last_day, half_day = [], []
+        self.data["year"] = self.data.index.year
+        self.data.reset_index(inplace=True)
+
+        for year in self.data.year.unique():
+            last_day.append(self.data[self.data['year'] == year].index[-1])
+            half_day.append(
+                self.data[self.data['year'] == year].index[
+                    len(self.data[self.data['year'] == year])//2
+                ]
+            )
+
+        return last_day, half_day
+
+    def run_train(
+            self,
+            start_idx: int | None = None,
+            stop_idx: int | None = None
+    ) -> pd.DataFrame:
+        """
+        Run taining rolling strategy
+        """
         curr_cond = None
-
-        for idx in range(len(self.data) - 1):
+        execute_size = 0
+        t = 0
+        curr_ret = 0
+        print(start_idx, stop_idx)
+        for idx in range(start_idx, stop_idx, 1):
             logics = self.combine_strat.get_strategy(idx)
-
-            if curr_cond is None:
-                self.profit_map["profit"].append(0)
-                self.profit_map["profitwithfee"].append(0)
-                curr_ret = 0
-
-                if all(logics["long"]):
-                    print(idx)
-                    print(len(self.data))
-                    execute_size = self.cap / self.data["open"].iloc[idx+1]
-                    curr_cond = "long"
-                    t = idx + 1
-                    self.trade_log["long"].append(t)
-
-                elif all(logics["short"]):
-                    execute_size = self.cap / self.data["open"].iloc[idx+1]
-                    curr_cond = "short"
-                    t = idx + 1
-                    self.trade_log["short"].append(t)
-
-            elif curr_cond == "long":
-                profit = execute_size * (self.data["open"].iloc[idx+1] - self.data["open"].iloc[idx])
-                self.profit_map["profit"].append(profit)
-                ret = (self.data["open"].iloc[idx+1] - self.data["open"].iloc[idx]) / self.data["open"].iloc[idx]
-                curr_ret += ret
-
-                if (
-                    all(logics["sell"])
-                    or idx == len(self.data) - 2
-                    or stop_loss(curr_ret, self.sl_thres)
-                    or stop_profit(curr_ret, self.sp_thres)
-                ):
-                    pnl_round = execute_size * (self.data["open"].iloc[idx+1] - self.data["open"].iloc[t])
-                    fee = self.cap * self.cost + (self.cap + pnl_round) * self.cost
-                    self.profit_map["profitwithfee"].append(profit - fee)
-                    self.trade_log["sell"].append(idx+1)
-                    curr_cond = None
-                    print(f"Current transaction return: {curr_ret}")
-
-                else:
-                    self.profit_map["profitwithfee"].append(profit)
-
-            elif curr_cond == "short":
-                profit = execute_size * (self.data["open"].iloc[idx] - self.data["open"].iloc[idx+1])
-                self.profit_map["profit"].append(profit)
-                ret = (self.data["open"].iloc[idx] - self.data["open"].iloc[idx+1]) / self.data["open"].iloc[idx]
-                curr_ret += ret
-
-                if (
-                    all(logics["buytocover"])
-                    or idx == len(self.data) - 2
-                    or stop_loss(curr_ret, self.sl_thres)
-                    or stop_profit(curr_ret, self.sp_thres)
-                ):
-                    pnl_round = execute_size * (self.data["open"].iloc[t] - self.data["open"].iloc[idx+1])
-                    fee = self.cap * self.cost + (self.cap + pnl_round) * self.cost
-                    self.profit_map["profitwithfee"].append(profit - fee)
-                    self.trade_log["buytocover"].append(idx+1)
-                    curr_cond = None
-                    print(f"Current transaction return: {curr_ret}")
-
-                else:
-                    self.profit_map["profitwithfee"].append(profit)
+            curr_cond, execute_size, t, curr_ret = self.daily_run(
+                idx, curr_cond, logics, execute_size, t, curr_ret
+            )
 
             for key in logics.keys():
                 logics[key] = []
 
-        equity_df = self.calculate_equity()
+        equity_df = self.calculate_rolling_profit("train", start_idx, stop_idx)
+        return equity_df
+
+    def run_valid(
+            self,
+            start_idx: int | None = None,
+            stop_idx: int | None = None
+    ) -> pd.DataFrame:
+        """
+        Run validation rolling strategy
+        """
+        curr_cond = None
+        execute_size = 0
+        t = 0
+        curr_ret = 0
+        print(start_idx, stop_idx)
+        for idx in range(start_idx, stop_idx, 1):
+            logics = self.combine_strat.get_strategy(idx)
+            curr_cond, execute_size, t, curr_ret = self.daily_run(
+                idx, curr_cond, logics, execute_size, t, curr_ret
+            )
+
+            for key in logics.keys():
+                logics[key] = []
+
+        equity_df = self.calculate_rolling_profit("valid", start_idx, stop_idx)
         return equity_df

@@ -5,9 +5,9 @@ max_idx=$((${#strats[@]} - 1))
 random_search_times=10
 
 for i in $(seq 1 $random_search_times); do
-    amount=1
     for strat in "${strats[@]}"; do
-        random_numbers=$(gshuf -i 0-$max_idx -n $amount)
+        random_amount=$(gshuf -i 1-2 -n 1)
+        random_numbers=$(gshuf -i 0-$max_idx -n $random_amount)
         selected_strats=()
 
         for num in $random_numbers; do
@@ -22,7 +22,5 @@ for i in $(seq 1 $random_search_times); do
 
         yq eval ".Strat = $yaml_array" -i config/combine_test.yaml
         python -m src.main --config_path config/combine_test.yaml --config_type yahoo
-        amount=$((amount+1))
     done
 done
-
