@@ -2,11 +2,11 @@
 Rolling main script to run the rolling strategy
 """
 import os
+import pickle
 from multiprocessing import Pool
 from argparse import ArgumentParser
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from .indicators.ma import SMA, EMA, MACD
 from .indicators.rsi import RSI
 from .indicators.bb import BB
@@ -104,20 +104,25 @@ if __name__ == "__main__":
         data = pd.concat(daily_data, axis=0)
         data.insert(0, "Date", data.pop("Date"))
 
+    elif p_args.config_type == "self":
+        data = get_self("tick_data/sp500.csv")
+        data.index = pd.to_datetime(data.index)
+
     else:
         raise ValueError("Invalid config type")
 
     df = transfer_colnames(data)
     GlobalDataManager.set_data(df)
     comb = Combination(*[eval(item) for item in cfg['Strat']])
-    full_profit_df = pd.DataFrame()
 
-    i = 0
+    i, val_year, last_year = 1, 0, df.index[-1].year
 
-    while i < 5:
-        best_equity_val = -np.inf
+    full_trajectory, full_return_log, full_date = [], [], []
 
-        for _ in tqdm(range(p_args.trials)):
+    while val_year < last_year:
+        best_ret = -np.inf
+
+        for _ in range(p_args.trials):
             for idx, ind in enumerate(comb.indicators):
                 num_params = num_args(ind)
 
@@ -129,73 +134,113 @@ if __name__ == "__main__":
                     )
 
                 elif num_params == 2:
-                    random_short = np.random.randint(5, 100)
-                    random_long = np.random.randint(20, 250)
+                    if ind.__class__ in [SMA, EMA]:
+                        random_short = np.random.randint(5, 100)
+                        random_long = int(
+                            random_short * np.random.uniform(1.2, 3.0)
+                        )
+                        if random_short > random_long:
+                            random_short, random_long = random_long, random_short
 
-                    if random_short > random_long:
-                        random_short, random_long = random_long, random_short
-
-                    indicator_class = ind.__class__
-                    comb.indicators[idx] = indicator_class(
-                        random_short, random_long
-                    )
+                        indicator_class = ind.__class__
+                        comb.indicators[idx] = indicator_class(
+                            random_short, random_long
+                        )
+                    elif ind.__class__ == BB:
+                        random_window = np.random.randint(5, 150)
+                        random_mult = np.random.uniform(1.5, 3.0)
+                        random_tf = np.random.choice([True, False])
+                        indicator_class = ind.__class__
+                        comb.indicators[idx] = indicator_class(
+                            random_window, random_mult, random_tf
+                        )
 
                 elif num_params == 3:
-                    random_short = np.random.randint(5, 100)
-                    random_long = np.random.randint(20, 250)
-                    random_signal = np.random.randint(5, 50)
+                    if ind.__class__ == BB:
+                        random_window = np.random.randint(5, 100)
+                        random_mult = np.random.uniform(1.5, 3.0)
+                        random_tf = np.random.choice([True, False])
+                        indicator_class = ind.__class__
+                        comb.indicators[idx] = indicator_class(
+                            random_window, random_mult, random_tf
+                        )
+                    else:
+                        random_short = np.random.randint(5, 100)
+                        random_long = random_short + np.random.randint(5, 20)
+                        random_signal = np.random.randint(5, 50)
 
-                    if random_short > random_long:
-                        random_short, random_long = random_long, random_short
+                        if random_short > random_long:
+                            random_short, random_long = random_long, random_short
 
-                    indicator_class = ind.__class__
-                    comb.indicators[idx] = indicator_class(
-                        random_short, random_long, random_signal
-                    )
+                        indicator_class = ind.__class__
+                        comb.indicators[idx] = indicator_class(
+                            random_short, random_long, random_signal
+                        )
 
             new_comb = Combination(*comb.indicators)
-            train_df = new_comb.run_combination().dropna()
+            train_df = new_comb.run_combination().fillna(0)
             used_cols = [
                 col for col in new_comb.cleaned_columns if col in train_df.columns
             ]
+            if ind.__class__ == BB:
+                used_cols = ["upper", "lower", "ma"]
+
+            if ind.__class__ == MACD:
+                used_cols = ["MACD", "Signal"]
+
             train_df = train_df[['open', 'high', 'low', 'close', 'volume'] + used_cols]
             combine_strat_train = CombineStrategy(
                 train_df,
                 comb.indicators,
                 comb.cleaned_columns
             )
-            runner = RunRollingStrategy(
+            train_runner = RunRollingStrategy(
                 train_df, combine_strat_train, **cfg["Settings"]
             )  # Run the training process
-            last_ids, half_ids = runner.day_of_year_idx()
+            last_ids, half_ids = train_runner.day_of_year_idx()
 
-            if i == 0:
+            if i == 1:
                 last_idx = last_ids[0]
 
-            eqdf = runner.run_train(0, last_idx)
-            now_equity = eqdf['equity_val'].iloc[-1]
+            ret, val_year_stop = train_runner.run_rolling(0, last_idx)
             now_class = comb.indicators
 
-            if now_equity > best_equity_val:
-                best_equity_val = eqdf['equity_val'].iloc[-1]
+            if ret > best_ret:
+                best_ret = ret
                 best_class = now_class[0]
 
-        print(f"best class at period {i}: {str(best_class)} | Equity val: {best_equity_val}")
+        print(f"best class from {train_df.loc[0, 'Date']} to {train_df.loc[last_idx, 'Date']}: {str(best_class)} | Best Cum Ret: {best_ret}")
 
         val_start_idx = last_idx
         i += 1
         # valid part
         val_comb = Combination(*[best_class])
-        val_df = comb.run_combination().dropna()
+        val_df = val_comb.run_combination().fillna(0)
         combine_strat_val = CombineStrategy(
             val_df,
             [best_class],
             comb.cleaned_columns
         )
-        runner = RunRollingStrategy(
+        valid_runner = RunRollingStrategy(
             val_df, combine_strat_val, **cfg["Settings"]
         )  # Run the validation process
-        prdf = runner.run_valid(val_start_idx, half_ids[i])
-        print(runner.trade_log)
+        print(f"Validation period {i - 1}: {val_df.index[val_start_idx]}, {val_df.index[half_ids[i]]}")
+
+        if i == len(half_ids) - 2:
+            ret, val_year = valid_runner.run_rolling(val_start_idx, val_df.shape[0] - 1)
+        else:
+            ret, val_year = valid_runner.run_rolling(val_start_idx, half_ids[i])
+
         last_idx = half_ids[i]
-        full_profit_df = pd.concat([full_profit_df, prdf], axis=0)
+        print(f"Validation period {i - 1} | Cum Ret: {ret}")
+        full_trajectory.extend(valid_runner.trajectory)
+        full_return_log.extend(valid_runner.return_log["return"])
+        full_date.extend(valid_runner.return_log["date"])
+
+    dic = {
+        "date": full_date,
+        "return": full_return_log,
+        "trajectory": full_trajectory
+    }
+    with open(f"trade_log/{ind.name}.pkl", "wb") as pkl_file:
+        pickle.dump(dic, pkl_file)

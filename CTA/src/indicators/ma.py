@@ -63,7 +63,7 @@ class MACD(BaseIndicator):
         self.k1 = k1
         self.k2 = k2
         self.k3 = k3
-        assert k1 < k2, "k1 must be less than k2"
+        assert k1 <= k2, "k1 must be less than k2"
 
     def build(self) -> pd.DataFrame:
         data = GlobalDataManager.get_data()

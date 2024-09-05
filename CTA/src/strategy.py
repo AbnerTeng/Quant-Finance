@@ -6,6 +6,7 @@ from .utils.logic_utils import (
     crossover,
     crossdown,
 )
+from .indicators.bb import BB
 from .base.base_indicator import BaseIndicator
 
 
@@ -101,7 +102,7 @@ class CombineStrategy:
                 self.trade_logics['sell'] = self.trade_logics['short']
                 self.trade_logics['buytocover'] = self.trade_logics['long']
 
-            if indicator.__class__.__name__ == "BB":
+            if indicator.__class__ == BB:
                 if "BB_0" in self.indicators_str:
                     self.trade_logics['long'].append(
                         crossover(self.data['close'], self.data['upper'], idx)
@@ -153,33 +154,32 @@ class RunStrategy(BackTest):
     def run(
             self,
             start_idx: int | None = None,
-            last_idx: int | None = None
+            stop_idx: int | None = None
     ) -> pd.DataFrame:
         """
         Run rolling strategy
         """
         curr_cond = None
-        execute_size = 0
         t = 0
         curr_ret = 0
 
         if start_idx is None:
             start_idx = 0
 
-        if last_idx is None:
-            last_idx = len(self.data) - 1
+        if stop_idx is None:
+            stop_idx = len(self.data) - 1
 
-        for idx in range(start_idx, last_idx, 1):
+        for idx in range(start_idx, stop_idx, 1):
             logics = self.combine_strat.get_strategy(idx)
-            curr_cond, execute_size, t, curr_ret = self.daily_run(
-                idx, curr_cond, logics, execute_size, t, curr_ret
+            curr_cond, t, curr_ret = self.daily_run(
+                idx, curr_cond, logics, t, curr_ret
             )
 
             for key in logics.keys():
                 logics[key] = []
 
-        equity_df = self.calculate_equity()
-        return equity_df
+        ret = self.calculate_return()
+        return ret
 
 
 class RunRollingStrategy(BackTest):
@@ -215,55 +215,35 @@ class RunRollingStrategy(BackTest):
                     len(self.data[self.data['year'] == year])//2
                 ]
             )
+            half_day.append(self.data[self.data['year'] == year].index[-1])
 
         return last_day, half_day
 
-    def run_train(
+    def run_rolling(
             self,
             start_idx: int | None = None,
             stop_idx: int | None = None
-    ) -> pd.DataFrame:
+    ) -> Tuple[float, int]:
         """
-        Run taining rolling strategy
+        Run rolling strategy
         """
         curr_cond = None
-        execute_size = 0
         t = 0
         curr_ret = 0
-        print(start_idx, stop_idx)
         for idx in range(start_idx, stop_idx, 1):
             logics = self.combine_strat.get_strategy(idx)
-            curr_cond, execute_size, t, curr_ret = self.daily_run(
-                idx, curr_cond, logics, execute_size, t, curr_ret
+            curr_cond, t, curr_ret = self.daily_run(
+                idx, curr_cond, logics, t, curr_ret
             )
 
             for key in logics.keys():
                 logics[key] = []
 
-        equity_df = self.calculate_rolling_profit("train", start_idx, stop_idx)
-        return equity_df
+        ret = self.calculate_return()
 
-    def run_valid(
-            self,
-            start_idx: int | None = None,
-            stop_idx: int | None = None
-    ) -> pd.DataFrame:
-        """
-        Run validation rolling strategy
-        """
-        curr_cond = None
-        execute_size = 0
-        t = 0
-        curr_ret = 0
-        print(start_idx, stop_idx)
-        for idx in range(start_idx, stop_idx, 1):
-            logics = self.combine_strat.get_strategy(idx)
-            curr_cond, execute_size, t, curr_ret = self.daily_run(
-                idx, curr_cond, logics, execute_size, t, curr_ret
-            )
+        if start_idx == 0:
+            val_year_stop = self.data.Date.iloc[stop_idx].year
+        else:
+            val_year_stop = self.data.index[stop_idx].year
 
-            for key in logics.keys():
-                logics[key] = []
-
-        equity_df = self.calculate_rolling_profit("valid", start_idx, stop_idx)
-        return equity_df
+        return ret, val_year_stop

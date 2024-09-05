@@ -59,7 +59,7 @@ def parse_args() -> ArgumentParser:
         "--config_type", "-ctp", type=str, default="yahoo"
     )
     parser.add_argument(
-        "--df_path", "-dp", type=str, default="data/strat_df.csv"
+        "--df_path", "-dp", type=str, default="tick_data/strat_df.csv"
     )
     parser.add_argument(
         '--plot', '-p', action='store_true'
@@ -106,23 +106,25 @@ if __name__ == "__main__":
         comb.cleaned_columns
     )
     runner = RunStrategy(big_df, combine_strat, **cfg["Settings"])
-    eqdf = runner.run()
-    print(eqdf.tail())
+    ret = runner.run()
+    print(ret)
+    print(runner.trajectory)
+    print(runner.return_log)
 
     full_strat = ""
 
     for strt in cfg["Strat"]:
         full_strat += strt + "_"
 
-    eqdf["strats"] = full_strat
+    # eqdf["strats"] = full_strat
 
-    if strat_df.empty:
-        strat_df = pd.concat([strat_df, eqdf], axis=0)
-    else:
-        if eqdf["strats"].values[0] not in strat_df["strats"].values:
-            strat_df = pd.concat([strat_df, eqdf], axis=0)
+    # if strat_df.empty:
+    #     strat_df = pd.concat([strat_df, eqdf], axis=0)
+    # else:
+    #     if eqdf["strats"].values[0] not in strat_df["strats"].values:
+    #         strat_df = pd.concat([strat_df, eqdf], axis=0)
 
-    strat_df.to_csv(p_args.df_path)
+    # strat_df.to_csv(p_args.df_path)
 
-    if p_args.plot:
-        profit_graph(eqdf)
+    # if p_args.plot:
+    #     profit_graph(eqdf)

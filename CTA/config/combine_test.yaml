@@ -11,7 +11,9 @@ DataAPITAIFEX:
   end: 2021-01-02
   scale:
 Strat:
-  - SMA(10)
+  - BB(20, 2, True)
+  # - RSI(14)
+  # - SMA(20, 50)
 Settings:
   initial_cap: 10000
   trans_cost: 0.001

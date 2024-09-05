@@ -21,7 +21,7 @@ def get_self(path: str) -> Any:
     extension = path.split('.')[-1]
 
     if extension == "csv":
-        return pd.read_csv(path, encoding='utf-8')
+        return pd.read_csv(path, encoding='utf-8', index_col=0)
 
     elif extension == "parquet":
         return pd.read_parquet(path, engine='pyarrow')

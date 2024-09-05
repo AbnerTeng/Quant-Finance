@@ -2,6 +2,7 @@
 Base class for all indicators
 """
 from abc import ABC, abstractmethod
+from ast import Not
 import pandas as pd
 
 
@@ -48,9 +49,6 @@ class BaseIndicator(ABC):
         if self.result is None:
             raise ValueError("Indicator hasn't been calculated. Call calculate() first.")
         return self.result
-
-    def __str__(self) -> str:
-        return f"{self.__class__.__name__} (column: {self.column})"
 
     @property
     def name(self) -> str:

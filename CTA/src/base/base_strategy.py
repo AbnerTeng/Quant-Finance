@@ -1,7 +1,6 @@
 """
 General backtest class
 """
-from abc import abstractmethod, ABC
 from typing import Any, Tuple
 import pandas as pd
 import numpy as np
@@ -11,7 +10,7 @@ from ..utils.logic_utils import (
 )
 
 
-class BackTest(ABC):
+class BackTest:
     """
     General backtest class
     """
@@ -41,9 +40,10 @@ class BackTest(ABC):
             "buytocover": [],
             "short": [],
         }
-        self.profit_map = {
-            "profit": [],
-            "profitwithfee": []
+        self.trajectory = []
+        self.return_log = {
+            "date": [],
+            "return": []
         }
 
     def daily_run(
@@ -51,30 +51,33 @@ class BackTest(ABC):
             idx: int,
             curr_cond: str | None,
             logics: pd.DataFrame,
-            execute_size: float,
             t: int,
             curr_ret: float
     ) -> Tuple[str | None, float, int, float]:
+        try:
+            self.return_log["date"].append(self.data["Date"].iloc[idx])
+        except:
+            self.return_log["date"].append(self.data.index[idx])
+
         if curr_cond is None:
-            self.profit_map["profit"].append(0)
-            self.profit_map["profitwithfee"].append(0)
+            self.return_log["return"].append(0)
             curr_ret = 0
 
             if all(logics["long"]):
-                execute_size = self.cap / self.data["open"].iloc[idx+1]
                 curr_cond = "long"
                 t = idx + 1
                 self.trade_log["long"].append(t)
+                # self.return_log["return"].append(-self.cost)
+                self.return_log["return"][-1] = -self.cost
 
             elif all(logics["short"]):
-                execute_size = self.cap / self.data["open"].iloc[idx+1]
                 curr_cond = "short"
                 t = idx + 1
                 self.trade_log["short"].append(t)
+                # self.return_log["return"].append(-self.cost)
+                self.return_log["return"][-1] = -self.cost
 
         elif curr_cond == "long":
-            profit = execute_size * (self.data["open"].iloc[idx+1] - self.data["open"].iloc[idx])
-            self.profit_map["profit"].append(profit)
             ret = (self.data["open"].iloc[idx+1] - self.data["open"].iloc[idx]) / self.data["open"].iloc[idx]
             curr_ret += ret
 
@@ -84,19 +87,15 @@ class BackTest(ABC):
                 or stop_loss(curr_ret, self.sl_thres)
                 or stop_profit(curr_ret, self.sp_thres)
             ):
-                pnl_round = execute_size * (self.data["open"].iloc[idx+1] - self.data["open"].iloc[t])
-                fee = self.cap * self.cost + (self.cap + pnl_round) * self.cost
-                self.profit_map["profitwithfee"].append(profit - fee)
+                self.return_log["return"].append(ret - self.cost)
                 self.trade_log["sell"].append(idx+1)
                 curr_cond = None
-                # print(f"Current transaction return: {curr_ret}")
+                self.trajectory.append((t, idx+1, ret - self.cost))
 
             else:
-                self.profit_map["profitwithfee"].append(profit)
+                self.return_log["return"].append(0)
 
         elif curr_cond == "short":
-            profit = execute_size * (self.data["open"].iloc[idx] - self.data["open"].iloc[idx+1])
-            self.profit_map["profit"].append(profit)
             ret = (self.data["open"].iloc[idx] - self.data["open"].iloc[idx+1]) / self.data["open"].iloc[idx]
             curr_ret += ret
 
@@ -106,19 +105,16 @@ class BackTest(ABC):
                 or stop_loss(curr_ret, self.sl_thres)
                 or stop_profit(curr_ret, self.sp_thres)
             ):
-                pnl_round = execute_size * (self.data["open"].iloc[t] - self.data["open"].iloc[idx+1])
-                fee = self.cap * self.cost + (self.cap + pnl_round) * self.cost
-                self.profit_map["profitwithfee"].append(profit - fee)
+                self.return_log["return"].append(ret - self.cost)
                 self.trade_log["buytocover"].append(idx+1)
                 curr_cond = None
-                # print(f"Current transaction return: {curr_ret}")
+                self.trajectory.append((t, idx+1, ret - self.cost))
 
             else:
-                self.profit_map["profitwithfee"].append(profit)
+                self.return_log["return"].append(0)
 
-        return curr_cond, execute_size, t, curr_ret
+        return curr_cond, t, curr_ret
 
-    # @abstractmethod
     def run(
             self,
             start_idx: int | None = None,
@@ -129,50 +125,8 @@ class BackTest(ABC):
         """
         raise NotImplementedError
 
-    def calculate_equity(self) -> pd.DataFrame:
+    def calculate_return(self) -> float:
         """
-        Calculate equity
+        calculate the return from `self.return_log`
         """
-        equity = pd.DataFrame(
-            {
-                "profit": np.cumsum(self.profit_map["profit"]),
-                "profitwithfee": np.cumsum(self.profit_map["profitwithfee"])
-            },
-            index=self.data.index[:len(self.profit_map["profit"])]
-        )
-        equity["equity_val"] = self.cap + equity["profitwithfee"]
-        equity["dd%"] = (equity["equity_val"] / equity["equity_val"].cummax()) - 1
-        equity["dd"] = equity["equity_val"] - equity["equity_val"].cummax()
-        return equity
-
-    def calculate_rolling_profit(
-            self,
-            status: str,
-            start_idx: int,
-            stop_idx: int
-    ) -> pd.DataFrame:
-        """
-        Calculate equity with specific data window
-        """
-        if status == "train":
-            equity = pd.DataFrame(
-                {
-                    "profit": np.cumsum(self.profit_map["profit"]),
-                    "profitwithfee": np.cumsum(self.profit_map["profitwithfee"])
-                },
-                index=self.data.index[:len(self.profit_map["profit"])]
-            )
-            equity["equity_val"] = self.cap + equity["profitwithfee"]
-            equity["dd%"] = (equity["equity_val"] / equity["equity_val"].cummax()) - 1
-            equity["dd"] = equity["equity_val"] - equity["equity_val"].cummax()
-            return equity
-
-        elif status == "valid":
-            profit = pd.DataFrame(
-                {
-                    "profit": np.cumsum(self.profit_map["profit"]),
-                    "profitwithfee": np.cumsum(self.profit_map["profitwithfee"])
-                },
-                index=self.data.index[start_idx:stop_idx]
-            )
-            return profit
+        return np.cumsum(self.return_log["return"])[-1]
