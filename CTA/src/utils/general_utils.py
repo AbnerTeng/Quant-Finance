@@ -55,22 +55,3 @@ def parse_column(col):
     params = [params] if isinstance(params, int) else list(params)
 
     return [f"{ind}_{param}" for param in params]
-
-
-def num_args(obj: object) -> int:
-    """
-    Return the number of arguments a function has
-    """
-    cls = obj.__class__
-
-    init_signature = inspect.signature(cls.__init__)
-    bound_args = {
-        param: getattr(obj, param) for param in init_signature.parameters if param != 'self'
-    }
-
-    num_non_default_args = sum(
-        1 for param_name, param in init_signature.parameters.items()
-        if param_name != 'self' and bound_args[param_name] != param.default
-    )
-
-    return num_non_default_args

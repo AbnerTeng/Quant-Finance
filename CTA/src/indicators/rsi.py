@@ -12,13 +12,13 @@ class RSI(BaseIndicator):
     """
     RSI indicator class
     """
-    def __init__(self, period: int, column: str = 'close') -> None:
-        super().__init__(column)
+    def __init__(self, period: int) -> None:
+        super().__init__()
         self.period = period
 
     def build(self) -> pd.DataFrame:
         data = GlobalDataManager.get_data()
-        close = GlobalDataManager.get_column(self.column)
+        close = GlobalDataManager.get_column('close')
         delta = close.diff()
         gain = delta.where(delta > 0, 0)
         loss = -delta.where(delta < 0, 0)

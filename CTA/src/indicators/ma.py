@@ -12,14 +12,14 @@ class SMA(BaseIndicator):
     """
     Simple moving average indicator
     """
-    def __init__(self, k1: int, k2: int = None, column: str = 'close') -> None:
-        super().__init__(column)
+    def __init__(self, k1: int, k2: int = None) -> None:
+        super().__init__()
         self.k1 = k1
         self.k2 = k2
 
     def build(self) -> pd.DataFrame:
         data = GlobalDataManager.get_data()
-        close = GlobalDataManager.get_column(self.column)
+        close = GlobalDataManager.get_column('close')
         data[f'SMA_{self.k1}'] = close.rolling(window=self.k1).mean()
 
         if isinstance(self.k2, int):
@@ -35,14 +35,14 @@ class EMA(BaseIndicator):
     """
     Exponential moving average indicator
     """
-    def __init__(self, k1: int, k2: int = None, column: str = 'close') -> None:
-        super().__init__(column)
+    def __init__(self, k1: int, k2: int = None) -> None:
+        super().__init__()
         self.k1 = k1
         self.k2 = k2
 
     def build(self) -> pd.DataFrame:
         data = GlobalDataManager.get_data()
-        close = GlobalDataManager.get_column(self.column)
+        close = GlobalDataManager.get_column('close')
         data[f'EMA_{self.k1}'] = close.ewm(span=self.k1).mean()
 
         if isinstance(self.k2, int):
@@ -58,8 +58,8 @@ class MACD(BaseIndicator):
     """
     MACD indicator
     """
-    def __init__(self, k1: int, k2: int, k3: int, column: str = 'close') -> None:
-        super().__init__(column)
+    def __init__(self, k1: int, k2: int, k3: int) -> None:
+        super().__init__()
         self.k1 = k1
         self.k2 = k2
         self.k3 = k3
@@ -67,7 +67,7 @@ class MACD(BaseIndicator):
 
     def build(self) -> pd.DataFrame:
         data = GlobalDataManager.get_data()
-        close = GlobalDataManager.get_column(self.column)
+        close = GlobalDataManager.get_column('close')
         data['MACD'] = close.ewm(span=self.k1).mean() - close.ewm(span=self.k2).mean()
         data['Signal'] = data['MACD'].ewm(span=self.k3).mean()
 

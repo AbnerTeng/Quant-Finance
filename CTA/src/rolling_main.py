@@ -7,6 +7,8 @@ from multiprocessing import Pool
 from argparse import ArgumentParser
 import numpy as np
 import pandas as pd
+from sympy import per
+from tomlkit import item
 from .indicators.ma import SMA, EMA, MACD
 from .indicators.rsi import RSI
 from .indicators.bb import BB
@@ -14,10 +16,7 @@ from .strategy import (
     CombineStrategy,
     RunRollingStrategy
 )
-from .utils.general_utils import (
-    parse_column,
-    num_args
-)
+from .utils.general_utils import parse_column
 from .utils.data_utils import (
     get_self,
     get_taifex,
@@ -114,85 +113,80 @@ if __name__ == "__main__":
     df = transfer_colnames(data)
     GlobalDataManager.set_data(df)
     comb = Combination(*[eval(item) for item in cfg['Strat']])
+    tags = [eval(item).tag for item in cfg['Strat']]
 
     i, val_year, last_year = 1, 0, df.index[-1].year
 
-    full_trajectory, full_return_log, full_date = [], [], []
+    full_trajectory, full_return_log, full_date, full_param = [], [], [], []
 
     while val_year < last_year:
         best_ret = -np.inf
 
         for _ in range(p_args.trials):
             for idx, ind in enumerate(comb.indicators):
-                num_params = num_args(ind)
+                num_params = ind.num_args()
 
-                if num_params == 1:
+                if ind.__class__ in [EMA, SMA]:
+                    random_short = np.random.randint(5, 100)
+                    indicator_class = ind.__class__
+                    if num_params == 1:
+                        comb.indicators[idx] = indicator_class(
+                            random_short
+                        )
+                    elif num_params == 2:
+                        random_long = int(
+                            random_short * np.random.uniform(1.2, 5.0)
+                        )
+                        comb.indicators[idx] = indicator_class(
+                            random_short, random_long
+                        )
+
+                elif ind.__class__ == RSI:
                     random_window = np.random.randint(5, 100)
                     indicator_class = ind.__class__
                     comb.indicators[idx] = indicator_class(
                         random_window
                     )
 
-                elif num_params == 2:
-                    if ind.__class__ in [SMA, EMA]:
-                        random_short = np.random.randint(5, 100)
-                        random_long = int(
-                            random_short * np.random.uniform(1.2, 3.0)
-                        )
-                        if random_short > random_long:
-                            random_short, random_long = random_long, random_short
+                elif ind.__class__ == BB:
+                    random_window = np.random.randint(5, 150)
+                    random_mult = np.random.uniform(1.5, 3.0)
+                    random_tf = np.random.choice([True, False])
+                    indicator_class = ind.__class__
+                    comb.indicators[idx] = indicator_class(
+                        random_window, random_mult, random_tf
+                    )
 
-                        indicator_class = ind.__class__
-                        comb.indicators[idx] = indicator_class(
-                            random_short, random_long
-                        )
-                    elif ind.__class__ == BB:
-                        random_window = np.random.randint(5, 150)
-                        random_mult = np.random.uniform(1.5, 3.0)
-                        random_tf = np.random.choice([True, False])
-                        indicator_class = ind.__class__
-                        comb.indicators[idx] = indicator_class(
-                            random_window, random_mult, random_tf
-                        )
+                elif ind.__class__ == MACD:
+                    random_short = np.random.randint(5, 100)
+                    random_long = random_short + np.random.randint(5, 20)
+                    random_signal = np.random.randint(5, 50)
 
-                elif num_params == 3:
-                    if ind.__class__ == BB:
-                        random_window = np.random.randint(5, 100)
-                        random_mult = np.random.uniform(1.5, 3.0)
-                        random_tf = np.random.choice([True, False])
-                        indicator_class = ind.__class__
-                        comb.indicators[idx] = indicator_class(
-                            random_window, random_mult, random_tf
-                        )
-                    else:
-                        random_short = np.random.randint(5, 100)
-                        random_long = random_short + np.random.randint(5, 20)
-                        random_signal = np.random.randint(5, 50)
+                    if random_short > random_long:
+                        random_short, random_long = random_long, random_short
 
-                        if random_short > random_long:
-                            random_short, random_long = random_long, random_short
-
-                        indicator_class = ind.__class__
-                        comb.indicators[idx] = indicator_class(
-                            random_short, random_long, random_signal
-                        )
+                    indicator_class = ind.__class__
+                    comb.indicators[idx] = indicator_class(
+                        random_short, random_long, random_signal
+                    )
 
             new_comb = Combination(*comb.indicators)
             train_df = new_comb.run_combination().fillna(0)
             used_cols = [
                 col for col in new_comb.cleaned_columns if col in train_df.columns
             ]
-            if ind.__class__ == BB:
-                used_cols = ["upper", "lower", "ma"]
+            new_classes = [ind.__class__ for ind in new_comb.indicators]
+            if BB in new_classes:
+                used_cols += ["upper", "lower", "ma"]
 
-            if ind.__class__ == MACD:
-                used_cols = ["MACD", "Signal"]
+            if MACD in new_classes:
+                used_cols += ["MACD", "Signal"]
 
             train_df = train_df[['open', 'high', 'low', 'close', 'volume'] + used_cols]
             combine_strat_train = CombineStrategy(
                 train_df,
-                comb.indicators,
-                comb.cleaned_columns
+                new_comb.indicators,
+                new_comb.cleaned_columns
             )
             train_runner = RunRollingStrategy(
                 train_df, combine_strat_train, **cfg["Settings"]
@@ -203,18 +197,18 @@ if __name__ == "__main__":
                 last_idx = last_ids[0]
 
             ret, val_year_stop = train_runner.run_rolling(0, last_idx)
-            now_class = comb.indicators
+            now_class = new_comb.indicators
 
             if ret > best_ret:
                 best_ret = ret
-                best_class = now_class[0]
+                best_class = now_class
 
-        print(f"best class from {train_df.loc[0, 'Date']} to {train_df.loc[last_idx, 'Date']}: {str(best_class)} | Best Cum Ret: {best_ret}")
+        print(f"best class from {train_df.loc[0, 'Date']} to {train_df.loc[last_idx, 'Date']}: {[str(bc) for bc in best_class]} | Best Cum Ret: {best_ret}")
 
         val_start_idx = last_idx
         i += 1
         # valid part
-        val_comb = Combination(*[best_class])
+        val_comb = Combination(*best_class)
         val_df = val_comb.run_combination().fillna(0)
         combine_strat_val = CombineStrategy(
             val_df,
@@ -233,14 +227,27 @@ if __name__ == "__main__":
 
         last_idx = half_ids[i]
         print(f"Validation period {i - 1} | Cum Ret: {ret}")
+        period_param = [
+            {
+            ind.tag: ind.get_init_args() for ind in val_comb.indicators
+            }
+        ]
         full_trajectory.extend(valid_runner.trajectory)
         full_return_log.extend(valid_runner.return_log["return"])
         full_date.extend(valid_runner.return_log["date"])
+        full_param.extend(period_param)
 
     dic = {
         "date": full_date,
         "return": full_return_log,
-        "trajectory": full_trajectory
+        "trajectory": full_trajectory,
+        "param": full_param
     }
-    with open(f"trade_log/{ind.name}.pkl", "wb") as pkl_file:
+
+    pkl_filename = f"{'_'.join(tags)}.pkl"
+
+    if pkl_filename in os.listdir("trade_log"):
+        pkl_filename = f"{'_'.join(tags)}_{np.random.randint(1000)}.pkl"
+
+    with open(f"trade_log/{pkl_filename}", 'wb') as pkl_file:
         pickle.dump(dic, pkl_file)

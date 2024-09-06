@@ -2,7 +2,8 @@
 Base class for all indicators
 """
 from abc import ABC, abstractmethod
-from ast import Not
+import inspect
+from typing import Tuple
 import pandas as pd
 
 
@@ -53,3 +54,31 @@ class BaseIndicator(ABC):
     @property
     def name(self) -> str:
         return str(self)
+
+    @property
+    def tag(self) -> str:
+        return str(self.__class__.__name__)
+
+    def num_args(self) -> int:
+        """
+        Return the number of arguments a function has
+        """
+        init_signature = inspect.signature(self.__init__)
+        bound_args = {
+            param: getattr(self, param) for param in init_signature.parameters if param != 'self'
+        }
+        num_non_default_args = sum(
+            1 for param_name, paramn in init_signature.parameters.items()
+            if param_name != 'self' and bound_args[param_name] != paramn.default
+        )
+        return num_non_default_args
+
+    def get_init_args(self) -> Tuple:
+        """
+        Get the arguments of the indicator
+        """
+        init_signature = inspect.signature(self.__init__)
+        bound_args = {
+            param: getattr(self, param) for param in init_signature.parameters if param != 'self'
+        }
+        return bound_args
