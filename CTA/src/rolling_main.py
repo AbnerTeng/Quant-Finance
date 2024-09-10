@@ -7,8 +7,6 @@ from multiprocessing import Pool
 from argparse import ArgumentParser
 import numpy as np
 import pandas as pd
-from sympy import per
-from tomlkit import item
 from .indicators.ma import SMA, EMA, MACD
 from .indicators.rsi import RSI
 from .indicators.bb import BB
@@ -176,6 +174,7 @@ if __name__ == "__main__":
                 col for col in new_comb.cleaned_columns if col in train_df.columns
             ]
             new_classes = [ind.__class__ for ind in new_comb.indicators]
+
             if BB in new_classes:
                 used_cols += ["upper", "lower", "ma"]
 
@@ -197,23 +196,27 @@ if __name__ == "__main__":
                 last_idx = last_ids[0]
 
             ret, val_year_stop = train_runner.run_rolling(0, last_idx)
-            now_class = new_comb.indicators
 
             if ret > best_ret:
                 best_ret = ret
-                best_class = now_class
+                best_class = new_comb.indicators
+                best_used_cols = used_cols
+                best_new_classes = [
+                    ind.__class__ for ind in best_class
+                ]
 
         print(f"best class from {train_df.loc[0, 'Date']} to {train_df.loc[last_idx, 'Date']}: {[str(bc) for bc in best_class]} | Best Cum Ret: {best_ret}")
-
         val_start_idx = last_idx
         i += 1
         # valid part
         val_comb = Combination(*best_class)
         val_df = val_comb.run_combination().fillna(0)
+        val_df = val_df[['open', 'high', 'low', 'close', 'volume'] + best_used_cols]
+
         combine_strat_val = CombineStrategy(
             val_df,
-            [best_class],
-            comb.cleaned_columns
+            best_class,
+            val_comb.cleaned_columns
         )
         valid_runner = RunRollingStrategy(
             val_df, combine_strat_val, **cfg["Settings"]
@@ -243,6 +246,7 @@ if __name__ == "__main__":
         "trajectory": full_trajectory,
         "param": full_param
     }
+    print(np.cumsum(dic['return'])[-1])
 
     pkl_filename = f"{'_'.join(tags)}.pkl"
 
