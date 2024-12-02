@@ -4,55 +4,25 @@ Rolling main script to run the rolling strategy
 import os
 import pickle
 from multiprocessing import Pool
-from argparse import ArgumentParser
+
+from argparse import ArgumentParser, Namespace
 import numpy as np
 import pandas as pd
-from .indicators.ma import SMA, EMA, MACD
-from .indicators.rsi import RSI
-from .indicators.bb import BB
+
 from .strategy import (
-    CombineStrategy,
+    Strategy,
     RunRollingStrategy
 )
-from .utils.general_utils import parse_column
 from .utils.data_utils import (
     get_self,
     get_taifex,
     transfer_colnames
 )
 from .get_data import DataAPI
-# from .utils.plot import profit_graph, trade_position
-from .base.base_indicator import BaseIndicator, GlobalDataManager
+from .base.base_indicator import GlobalDataManager
 
 
-class Combination:
-    """
-    Combination class to combine multiple strategies
-    """
-    def __init__(self, *args: BaseIndicator) -> None:
-        self.indicators = list(args)
-        self.used_columns = [
-            name.name for name in args
-        ]
-        self.cleaned_columns = [
-            cleaned_col
-            for col in self.used_columns
-            for cleaned_col in parse_column(col)
-        ]
-
-    def run_combination(self) -> pd.DataFrame:
-        full_df = pd.DataFrame()
-
-        for strat in self.indicators:
-            strat_data = strat.build()
-            full_df = pd.concat([full_df, strat_data], axis=1)
-
-        full_df = full_df.loc[:, ~full_df.columns.duplicated()]
-
-        return full_df
-
-
-def parse_args() -> ArgumentParser:
+def get_args() -> Namespace:
     """
     parsing arguments
     """
@@ -70,14 +40,23 @@ def parse_args() -> ArgumentParser:
         "--trials", '-t', type=int, default=50
     )
     parser.add_argument(
+        "--random", "-r", action="store_true"
+    )
+    parser.add_argument(
         '--plot', '-p', action='store_true'
+    )
+    parser.add_argument(
+        "--task", "-tk", type=str, default="synthetic_spsl"
     )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
-    p_args = parse_args()
+    p_args = get_args()
     cfg = get_self(p_args.config_path)
+
+    if p_args.task == "synthetic_spsl":
+        p_args.random = False
 
     if os.path.exists(p_args.df_path):
         strat_df = pd.read_csv(p_args.df_path, index_col=0)
@@ -110,85 +89,51 @@ if __name__ == "__main__":
 
     df = transfer_colnames(data)
     GlobalDataManager.set_data(df)
-    comb = Combination(*[eval(item) for item in cfg['Strat']])
-    tags = [eval(item).tag for item in cfg['Strat']]
-
     i, val_year, last_year = 1, 0, df.index[-1].year
-
-    full_trajectory, full_return_log, full_date, full_param = [], [], [], []
+    full_log, full_trajectory, full_return_log, full_date, full_param = [], [], [], [], []
+    best_class = None
+    ind = eval(cfg["Strat"])
 
     while val_year < last_year:
         best_ret = -np.inf
 
         for _ in range(p_args.trials):
-            for idx, ind in enumerate(comb.indicators):
-                num_params = ind.num_args()
+            num_params = ind.num_args()
+            args = ind.get_init_args()
 
-                if ind.__class__ in [EMA, SMA]:
-                    random_short = np.random.randint(5, 100)
-                    indicator_class = ind.__class__
-                    if num_params == 1:
-                        comb.indicators[idx] = indicator_class(
-                            random_short
-                        )
-                    elif num_params == 2:
-                        random_long = int(
-                            random_short * np.random.uniform(1.2, 5.0)
-                        )
-                        comb.indicators[idx] = indicator_class(
-                            random_short, random_long
-                        )
-
-                elif ind.__class__ == RSI:
-                    random_window = np.random.randint(5, 100)
-                    indicator_class = ind.__class__
-                    comb.indicators[idx] = indicator_class(
-                        random_window
+            if p_args.random:
+                if ind.tag in ["EMA", "SMA"]:
+                    args.update(
+                        {
+                            k: np.random.randint(5, 100) if v is not None else v for k, v in args.items()
+                        }
                     )
 
-                elif ind.__class__ == BB:
-                    random_window = np.random.randint(5, 150)
-                    random_mult = np.random.uniform(1.5, 3.0)
-                    random_tf = np.random.choice([True, False])
-                    indicator_class = ind.__class__
-                    comb.indicators[idx] = indicator_class(
-                        random_window, random_mult, random_tf
+                elif ind.tag == "RSI":
+                    args.update(
+                        {
+                            k: np.random.randint(5, 100) for k, in args.keys()
+                        }
                     )
 
-                elif ind.__class__ == MACD:
-                    random_short = np.random.randint(5, 100)
-                    random_long = random_short + np.random.randint(5, 20)
-                    random_signal = np.random.randint(5, 50)
-
-                    if random_short > random_long:
-                        random_short, random_long = random_long, random_short
-
-                    indicator_class = ind.__class__
-                    comb.indicators[idx] = indicator_class(
-                        random_short, random_long, random_signal
+                elif ind.tag == "BB":
+                    args.update(
+                        {
+                            "period": np.random.randint(5, 100),
+                            "std": np.random.uniform(1.2, 3.0),
+                            "reverse": np.random.choice([True, False])
+                        }
                     )
 
-            new_comb = Combination(*comb.indicators)
-            train_df = new_comb.run_combination().fillna(0)
-            used_cols = [
-                col for col in new_comb.cleaned_columns if col in train_df.columns
-            ]
-            new_classes = [ind.__class__ for ind in new_comb.indicators]
+                vars(ind).update(args)
 
-            if BB in new_classes:
-                used_cols += ["upper", "lower", "ma"]
+            else:
+                print("use self-defined parameters")
 
-            if MACD in new_classes:
-                used_cols += ["MACD", "Signal"]
-
-            train_df = train_df[['open', 'high', 'low', 'close', 'volume'] + used_cols]
-            combine_strat_train = CombineStrategy(
-                train_df,
-                new_comb.indicators,
-                new_comb.cleaned_columns
-            )
+            train_df = ind.build()
+            spec_strategy = Strategy(train_df, ind)
             train_runner = RunRollingStrategy(
-                train_df, combine_strat_train, **cfg["Settings"]
+                train_df, spec_strategy, **cfg["Settings"]
             )  # Run the training process
             last_ids, half_ids = train_runner.day_of_year_idx()
 
@@ -199,25 +144,15 @@ if __name__ == "__main__":
 
             if ret > best_ret:
                 best_ret = ret
-                best_class = new_comb.indicators
-                best_used_cols = used_cols
-                best_new_classes = [
-                    ind.__class__ for ind in best_class
-                ]
+                best_class = spec_strategy.indicator
 
-        print(f"best class from {train_df.loc[0, 'Date']} to {train_df.loc[last_idx, 'Date']}: {[str(bc) for bc in best_class]} | Best Cum Ret: {best_ret}")
+            GlobalDataManager.reset()
+
+        print(f"best class from {train_df.index[0]} to {train_df.index[last_idx]}: {[str(best_class)]} | Best Cum Ret: {best_ret}")
         val_start_idx = last_idx
         i += 1
-        # valid part
-        val_comb = Combination(*best_class)
-        val_df = val_comb.run_combination().fillna(0)
-        val_df = val_df[['open', 'high', 'low', 'close', 'volume'] + best_used_cols]
-
-        combine_strat_val = CombineStrategy(
-            val_df,
-            best_class,
-            val_comb.cleaned_columns
-        )
+        val_df = best_class.build()
+        combine_strat_val = Strategy(val_df, best_class)
         valid_runner = RunRollingStrategy(
             val_df, combine_strat_val, **cfg["Settings"]
         )  # Run the validation process
@@ -230,28 +165,39 @@ if __name__ == "__main__":
 
         last_idx = half_ids[i]
         print(f"Validation period {i - 1} | Cum Ret: {ret}")
-        period_param = [
-            {
-            ind.tag: ind.get_init_args() for ind in val_comb.indicators
-            }
-        ]
+        period_param = {ind.tag: ind.get_init_args()}
+        full_log.append(valid_runner.trade_log)
         full_trajectory.extend(valid_runner.trajectory)
         full_return_log.extend(valid_runner.return_log["return"])
         full_date.extend(valid_runner.return_log["date"])
         full_param.extend(period_param)
 
+        GlobalDataManager.reset()
+
     dic = {
         "date": full_date,
         "return": full_return_log,
+        "trade_log": full_log,
         "trajectory": full_trajectory,
         "param": full_param
     }
     print(np.cumsum(dic['return'])[-1])
 
-    pkl_filename = f"{'_'.join(tags)}.pkl"
+    if p_args.task == "synthetic_spsl":
+        pkl_filename = f"{ind.__str__()}_{cfg['Settings']['sl_thres']}_{cfg['Settings']['sp_thres']}.pkl"
+        folder_name = f"synthetic_{ind.__str__()}"
 
-    if pkl_filename in os.listdir("trade_log"):
-        pkl_filename = f"{'_'.join(tags)}_{np.random.randint(1000)}.pkl"
+        if folder_name not in os.listdir("trade_log"):
+            os.mkdir(f"trade_log/{folder_name}")
 
-    with open(f"trade_log/{pkl_filename}", 'wb') as pkl_file:
-        pickle.dump(dic, pkl_file)
+        with open(f"trade_log/{folder_name}/{pkl_filename}", "wb") as pkl_file:
+            pickle.dump(dic, pkl_file)
+
+    else:
+        pkl_filename = f"{ind.tag}_new_{cfg['Settings']['sl_thres']}_{cfg['Settings']['sp_thres']}.pkl"
+
+        if pkl_filename in os.listdir("trade_log"):
+            pkl_filename = f"{ind.tag}_new_{np.random.randint(1000)}.pkl"
+
+        with open(f"trade_log/{pkl_filename}", 'wb') as pkl_file:
+            pickle.dump(dic, pkl_file)

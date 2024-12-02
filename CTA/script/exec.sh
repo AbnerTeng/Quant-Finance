@@ -23,6 +23,6 @@ for i in $(seq 1 $random_search_times); do
         echo "Updating YAML with strategies: $yaml_array"
 
         yq eval ".Strat = $yaml_array" -i config/combine_test.yaml
-        python -m src.rolling_main --config_path config/combine_test.yaml --config_type yahoo --trials 1
+        python -m src.rolling_main --config_path config/combine_test.yaml --config_type yahoo --trials 3
     done
 done
