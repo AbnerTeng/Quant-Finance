@@ -4,7 +4,7 @@ Base class for all indicators
 
 from abc import ABC, abstractmethod
 import inspect
-from typing import Tuple
+from typing import Dict, Any
 import pandas as pd
 
 
@@ -30,12 +30,12 @@ class GlobalDataManager:
             return cls._data
 
     @classmethod
-    def get_column(cls, column: str) -> pd.Series:
+    def get_column(cls, column: str) -> pd.DataFrame:
         data = cls.get_data()
         if column not in data.columns:
             raise ValueError(f"Column '{column}' not found in the data.")
 
-        return data[column]
+        return pd.DataFrame(data[column])
 
     @classmethod
     def reset(cls) -> None:
@@ -55,7 +55,7 @@ class BaseIndicator(ABC):
         self.result = None
 
     @abstractmethod
-    def build(self) -> pd.Series:
+    def build(self) -> pd.DataFrame:
         pass
 
     def get_result(self) -> pd.Series:
@@ -90,7 +90,7 @@ class BaseIndicator(ABC):
         )
         return num_non_default_args
 
-    def get_init_args(self) -> Tuple:
+    def get_init_args(self) -> Dict[str, Any]:
         """
         Get the arguments of the indicator
         """

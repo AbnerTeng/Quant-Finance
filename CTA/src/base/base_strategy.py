@@ -2,7 +2,7 @@
 General backtest class
 """
 
-from typing import Any, Tuple
+from typing import Any, Optional, SupportsIndex, Tuple, Union, Dict, List
 
 import pandas as pd
 import numpy as np
@@ -19,10 +19,9 @@ class BackTest:
         self,
         data: Any,
         initial_cap: float,
-        part: int,
         trans_cost: float,
-        sl_thres: float | None = None,
-        sp_thres: float | None = None,
+        sl_thres: Optional[float] = None,
+        sp_thres: Optional[float] = None,
     ) -> None:
         """
         strategy: backtest strategy
@@ -33,8 +32,6 @@ class BackTest:
         """
         self.data = data
         self.cap = initial_cap
-        self.part = part
-        self.unit_cap = self.cap / self.part
         self.cost = trans_cost
         self.sl_thres = sl_thres if sl_thres is not None else -np.inf
         self.sp_thres = sp_thres if sp_thres is not None else np.inf
@@ -50,11 +47,11 @@ class BackTest:
     def daily_run(
         self,
         idx: int,
-        curr_cond: str | None,
-        logics: pd.DataFrame,
+        curr_cond: Optional[str],
+        logics: Union[pd.DataFrame, Dict[str, List[bool]]],
         t: int,
         curr_ret: float,
-    ) -> Tuple[str | None, float, int, float]:
+    ) -> Tuple[Optional[str], int, float]:
         try:
             self.return_log["date"].append(self.data["Date"].iloc[idx])
         except KeyError:
@@ -116,9 +113,9 @@ class BackTest:
             else:
                 self.return_log["return"].append(0)
 
-        return curr_cond, t, curr_ret
+        return curr_cond, t, float(curr_ret)
 
-    def run(self, start_idx: int | None = None, stop_idx: int | None = None) -> None:
+    def run(self, start_idx: SupportsIndex, stop_idx: SupportsIndex) -> Any:
         """
         Run full backtest process
         """

@@ -1,14 +1,15 @@
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, SupportsIndex, Tuple, Any, Union, Optional, overload
+from typing_extensions import override
 
 import numpy as np
 import pandas as pd
+from sqlalchemy import over
 
 from .base.base_strategy import BackTest
 from .utils.logic_utils import (
     crossover,
     crossdown,
 )
-from .base.base_indicator import BaseIndicator
 
 
 class Strategy:
@@ -136,16 +137,14 @@ class RunStrategy(BackTest):
         strat: Strategy,
         initial_cap: float = 10000,
         trans_cost: float = 0.001,
-        sl_thres: float | None = None,
-        sp_thres: float | None = None,
+        sl_thres: Optional[float] = None,
+        sp_thres: Optional[float] = None,
     ) -> None:
         super().__init__(data, initial_cap, trans_cost, sl_thres, sp_thres)
         self.data = data
         self.strat = strat
 
-    def run(
-        self, start_idx: int | None = None, stop_idx: int | None = None
-    ) -> pd.DataFrame:
+    def run(self, start_idx: SupportsIndex, stop_idx: SupportsIndex) -> float:
         """
         Run rolling strategy
         """
@@ -190,11 +189,10 @@ class RunRollingStrategy(BackTest):
         strat: Strategy,
         initial_cap: float = 10000,
         trans_cost: float = 0.001,
-        part: int = 10,
         sl_thres: float | None = -np.inf,
         sp_thres: float | None = np.inf,
     ) -> None:
-        super().__init__(data, initial_cap, part, trans_cost, sl_thres, sp_thres)
+        super().__init__(data, initial_cap, trans_cost, sl_thres, sp_thres)
         self.data = data.fillna(0) if sum(data.isna().sum()) > 0 else data
         self.strat = strat
 
@@ -222,7 +220,7 @@ class RunRollingStrategy(BackTest):
         return last_day, half_day
 
     def run(
-        self, start_idx: int | None = None, stop_idx: int | None = None
+        self, start_idx: SupportsIndex, stop_idx: SupportsIndex
     ) -> Tuple[float, int]:
         """
         Run rolling strategy
@@ -235,7 +233,7 @@ class RunRollingStrategy(BackTest):
             ret: float ->
             val_year_stop: int ->
         """
-        curr_cond, curr_ret, t, pos_amount, neg_amount = None, 0, 0, 0, 0
+        curr_cond, curr_ret, t = None, 0, 0
 
         for idx in range(start_idx, stop_idx, 1):
             logics = self.strat.get_strategy(idx)

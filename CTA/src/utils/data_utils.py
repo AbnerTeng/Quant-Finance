@@ -2,11 +2,11 @@
 Utilities for data
 """
 
-from typing import Any, List
+from typing import Any, Union, Optional
 import warnings
 import datetime
 
-import yaml
+from omegaconf import DictConfig, ListConfig
 import pandas as pd
 import yfinance as yf
 from tqdm import tqdm
@@ -30,11 +30,6 @@ def get_self(path: str) -> Any:
     elif extension == "parquet":
         return pd.read_parquet(path, engine="pyarrow")
 
-    elif extension == "yaml":
-        with open(path, "r", encoding="utf-8") as yml:
-            data = yaml.safe_load(yml)
-        return data
-
     else:
         raise ValueError("File format not supported")
 
@@ -55,14 +50,15 @@ def transfer_colnames(data: Any) -> Any:
     return data
 
 
-def filter_novol(data: pd.DataFrame) -> pd.DataFrame:
+def filter_novol(data: pd.DataFrame) -> Union[pd.DataFrame, None, pd.Series]:
     """
     filter out rows with no volume
     """
     return data[data["volume"] > 0]
 
 
-def get_yahoo(stock_id: List[str], start: str, end: str, scale: str) -> pd.DataFrame:
+# def get_yahoo(cfg: Dict[str, Any]) -> pd.DataFrame:
+def get_yahoo(cfg: Union[DictConfig, ListConfig]) -> pd.DataFrame:
     """
     get data from yahoo finance
 
@@ -77,8 +73,12 @@ def get_yahoo(stock_id: List[str], start: str, end: str, scale: str) -> pd.DataF
     For more informations, please refer to:
     > https://github.com/ranaroussi/yfinance/wiki/Tickers#download
     """
+    stock_id = cfg.comp if isinstance(cfg.comp, list) else [cfg.comp]
+
     if len(stock_id) == 1:
-        return yf.download(stock_id[0], start=start, end=end, interval=scale)
+        return yf.download(
+            stock_id[0], start=cfg.start, end=cfg.end, interval=cfg.scale
+        )
 
     else:
         full_df = pd.DataFrame()
@@ -92,7 +92,11 @@ def get_yahoo(stock_id: List[str], start: str, end: str, scale: str) -> pd.DataF
 
                 else:
                     df = yf.download(
-                        stock, start=start, end=end, interval=scale, progress=True
+                        stock,
+                        start=cfg.start,
+                        end=cfg.end,
+                        interval=cfg.scale,
+                        progress=True,
                     )
                     df["stock_id"] = stock
                     full_df = pd.concat([full_df, df], axis=0)
@@ -108,14 +112,14 @@ def get_yahoo(stock_id: List[str], start: str, end: str, scale: str) -> pd.DataF
         return full_df
 
 
-def get_binance() -> pd.DataFrame:
+def get_binance() -> None:
     """
     Get crypto data from binance
     """
-    pass
+    raise NotImplementedError
 
 
-def get_taifex(day: datetime, market_code: int = 0) -> pd.DataFrame:
+def get_taifex(day: datetime.datetime, market_code: int = 0) -> pd.DataFrame:
     """
     Get data from Taiwan Futures Exchange
 
@@ -146,3 +150,4 @@ def get_taifex(day: datetime, market_code: int = 0) -> pd.DataFrame:
 
     except ValueError:
         print("No data on this day")
+        return pd.DataFrame()

@@ -1,17 +1,16 @@
 """
 Moving average strategies
 """
+
 import pandas as pd
-from ..base.base_indicator import (
-    BaseIndicator,
-    GlobalDataManager
-)
+from ..base.base_indicator import BaseIndicator, GlobalDataManager
 
 
 class SMA(BaseIndicator):
     """
     Simple moving average indicator
     """
+
     def __init__(self, k1: int, k2: int = None) -> None:
         super().__init__()
         self.k1 = k1
@@ -19,8 +18,8 @@ class SMA(BaseIndicator):
 
     def build(self) -> pd.DataFrame:
         data = GlobalDataManager.get_data()
-        close = GlobalDataManager.get_column('close')
-        data[f'SMA_{self.k1}'] = close.rolling(window=self.k1).mean()
+        close = GlobalDataManager.get_column("close")
+        data[f"SMA_{self.k1}"] = close.rolling(window=self.k1).mean()
 
         if isinstance(self.k2, int):
             data[f"SMA_{self.k2}"] = close.rolling(window=self.k2).mean()
@@ -35,6 +34,7 @@ class EMA(BaseIndicator):
     """
     Exponential moving average indicator
     """
+
     def __init__(self, k1: int, k2: int = None) -> None:
         super().__init__()
         self.k1 = k1
@@ -42,8 +42,8 @@ class EMA(BaseIndicator):
 
     def build(self) -> pd.DataFrame:
         data = GlobalDataManager.get_data()
-        close = GlobalDataManager.get_column('close')
-        data[f'EMA_{self.k1}'] = close.ewm(span=self.k1).mean()
+        close = GlobalDataManager.get_column("close")
+        data[f"EMA_{self.k1}"] = close.ewm(span=self.k1).mean()
 
         if isinstance(self.k2, int):
             data[f"EMA_{self.k2}"] = close.ewm(span=self.k2).mean()
@@ -58,6 +58,7 @@ class MACD(BaseIndicator):
     """
     MACD indicator
     """
+
     def __init__(self, k1: int, k2: int, k3: int) -> None:
         super().__init__()
         self.k1 = k1
@@ -67,9 +68,9 @@ class MACD(BaseIndicator):
 
     def build(self) -> pd.DataFrame:
         data = GlobalDataManager.get_data()
-        close = GlobalDataManager.get_column('close')
-        data['MACD'] = close.ewm(span=self.k1).mean() - close.ewm(span=self.k2).mean()
-        data['Signal'] = data['MACD'].ewm(span=self.k3).mean()
+        close = GlobalDataManager.get_column("close")
+        data["MACD"] = close.ewm(span=self.k1).mean() - close.ewm(span=self.k2).mean()
+        data["Signal"] = data["MACD"].ewm(span=self.k3).mean()
 
         return data
 
