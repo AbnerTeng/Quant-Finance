@@ -6,7 +6,6 @@ import ast
 import numpy as np
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
-from src.base.base_indicator import BaseIndicator
 
 
 SCALE_MAP = {"daily": 252, "weekly": 52, "monthly": 12}

@@ -1,9 +1,7 @@
-from typing import Dict, List, SupportsIndex, Tuple, Any, Union, Optional, overload
-from typing_extensions import override
+from typing import Dict, List, SupportsIndex, Tuple, Any, Optional
 
 import numpy as np
 import pandas as pd
-from sqlalchemy import over
 
 from .base.base_strategy import BackTest
 from .utils.logic_utils import (

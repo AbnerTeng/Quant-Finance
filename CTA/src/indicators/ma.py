@@ -2,7 +2,10 @@
 Moving average strategies
 """
 
+from typing import Optional
+
 import pandas as pd
+
 from ..base.base_indicator import BaseIndicator, GlobalDataManager
 
 
@@ -11,7 +14,7 @@ class SMA(BaseIndicator):
     Simple moving average indicator
     """
 
-    def __init__(self, k1: int, k2: int = None) -> None:
+    def __init__(self, k1: int, k2: Optional[int]) -> None:
         super().__init__()
         self.k1 = k1
         self.k2 = k2
@@ -35,7 +38,7 @@ class EMA(BaseIndicator):
     Exponential moving average indicator
     """
 
-    def __init__(self, k1: int, k2: int = None) -> None:
+    def __init__(self, k1: int, k2: Optional[int]) -> None:
         super().__init__()
         self.k1 = k1
         self.k2 = k2

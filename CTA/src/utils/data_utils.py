@@ -2,7 +2,7 @@
 Utilities for data
 """
 
-from typing import Any, Union, Optional
+from typing import Any, Union
 import warnings
 import datetime
 

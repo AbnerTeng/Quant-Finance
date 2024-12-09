@@ -57,7 +57,7 @@ if __name__ == "__main__":
         [],
     )
     ModelClass = get_class(cfg.Class.strat)
-    ind = ModelClass(cfg.Class.params)
+    ind = ModelClass(*cfg.Class.params)
     last_idx, half_ids, BEST_CLASS = None, [], ind
     ind: Union[BB, EMA, RSI, SMA]
 
