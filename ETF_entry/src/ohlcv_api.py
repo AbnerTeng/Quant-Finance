@@ -5,7 +5,7 @@ from typing import List
 from argparse import ArgumentParser
 from rich import print as rprint
 from CTA.src.get_data import DataAPI
-from CTA.src.utils.data_utils import (
+from data_utils import (
     get_self,
     transfer_colnames,
     filter_novol

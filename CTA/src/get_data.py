@@ -8,7 +8,7 @@ from multiprocessing import Pool
 from omegaconf import DictConfig, ListConfig
 import pandas as pd
 
-from .utils.data_utils import get_self, get_yahoo, get_taifex
+from data_utils import get_self, get_yahoo, get_taifex
 
 
 class DataAPI:
